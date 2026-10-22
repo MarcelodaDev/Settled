@@ -620,6 +620,7 @@ body {
 .celda-pendiente { font-weight: 500; }
 .texto-vencido { color: var(--acento); }
 
+.tabla .estado { font-size: 14px; }
 .estado--abierta { color: var(--tinta); }
 .estado--vencida { color: var(--acento); }
 .estado--pagada { color: var(--ok); }

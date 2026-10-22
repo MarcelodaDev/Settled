@@ -116,8 +116,8 @@ const construirColumnas = () => [
   {
     field: 'numero',
     headerName: t('col.numero'),
-    width: 150,
-    minWidth: 130,
+    width: 160,
+    minWidth: 156,
     cellClass: 'celda-cifra',
     valueFormatter: (p) => (esTotales(p) ? t('tabla.total') : p.value),
   },
@@ -125,7 +125,7 @@ const construirColumnas = () => [
     field: 'cliente',
     headerName: t('col.cliente'),
     width: 280,
-    minWidth: 130,
+    minWidth: 115,
     cellRenderer: celdaCliente,
     valueFormatter: (p) => (esTotales(p) ? t('facturas', { n: p.data.cuenta }) : p.value),
     getQuickFilterText: (p) => [p.data.cliente, p.data.concepto, p.data.email, p.data.numero].filter(Boolean).join(' '),
@@ -136,7 +136,7 @@ const construirColumnas = () => [
     field: 'estado',
     headerName: t('col.estado'),
     width: 180,
-    minWidth: 120,
+    minWidth: 140,
     cellRenderer: celdaEstado,
     // Ordenar por estado = primero lo más urgente.
     comparator: (_a, _b, nodoA, nodoB) => urgencia(nodoA.data) - urgencia(nodoB.data),
