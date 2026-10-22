@@ -6,7 +6,7 @@ import { locale, m } from './i18n.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
-const NUMERO_RE = /^COB-[A-Z0-9-]{4,21}$/;
+const NUMERO_RE = /^SET-[A-Z0-9-]{4,21}$/;
 const MONTO_MAX = 50000;
 
 // Fecha de hoy en Ecuador (YYYY-MM-DD), para no depender de la zona del servidor.
@@ -19,7 +19,7 @@ export function hoyEcuador() {
 export function generarNumero() {
   const fecha = hoyEcuador().slice(2).replaceAll('-', '');
   const azar = Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, '0');
-  return `COB-${fecha}-${azar}`;
+  return `SET-${fecha}-${azar}`;
 }
 
 function texto(valor, max) {

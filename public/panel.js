@@ -37,6 +37,13 @@ const tema = themeQuartz.withParams({
   cellHorizontalPadding: 14,
 });
 
+// Flechas de orden propias: trazo fino del mismo grosor que los filetes, en
+// lugar del icono por defecto de AG Grid, que delata el tema estándar.
+const flecha = (abajo) => `<svg class="icono-orden" width="9" height="11" viewBox="0 0 9 11" aria-hidden="true">`
+  + `<path d="M4.5 ${abajo ? '1v8.5M1.5 6.5l3 3 3-3' : '10V1.5M1.5 4.5l3-3 3 3'}" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="square"/></svg>`;
+
+const ICONOS = { sortAscending: flecha(false), sortDescending: flecha(true) };
+
 let api = null;
 let filtro = 'todas';
 let idsRespuesta = null; // facturas de la última pregunta, o null si no hay pregunta activa
@@ -339,6 +346,7 @@ export function iniciarPanel() {
   iniciarDetalle();
   api = createGrid($('#tabla-cobros'), {
     theme: tema,
+    icons: ICONOS,
     columnDefs: columnas,
     defaultColDef: { sortable: true, resizable: false, suppressMovable: true },
     rowData: [],

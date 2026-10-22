@@ -375,7 +375,7 @@ body {
   display: flex;
   align-items: flex-end;
   gap: 20px;
-  margin-top: 28px;
+  margin-top: 40px;
 }
 
 .pregunta__campo {
@@ -433,7 +433,7 @@ body {
 .cifras {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  margin: 40px 0 40px;
+  margin: 28px 0 0;
   border-top: 1px solid var(--tinta);
   border-bottom: 1px solid var(--filete);
 }
@@ -471,7 +471,7 @@ body {
   justify-content: space-between;
   align-items: baseline;
   gap: 16px 32px;
-  margin-bottom: 8px;
+  margin: 44px 0 8px;
 }
 
 .filtros { display: flex; flex-wrap: wrap; gap: 4px 24px; }
@@ -511,6 +511,12 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+
+.tabla .icono-orden { display: block; margin-left: 6px; color: var(--tinta); }
+/* En columnas alineadas a la derecha AG Grid pone el icono antes del texto. */
+.tabla .ag-right-aligned-header .icono-orden { margin-left: 0; margin-right: 6px; }
+.tabla .ag-header-cell-sorted-asc .ag-header-cell-text,
+.tabla .ag-header-cell-sorted-desc .ag-header-cell-text { color: var(--tinta); }
 
 .tabla .ag-cell { display: flex; align-items: center; }
 .tabla .ag-cell-wrapper { width: 100%; }
