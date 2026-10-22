@@ -125,25 +125,59 @@ function datosFijos(factura) {
   };
 }
 
-async function completarFijos(ids) {
-  const faltan = ids.filter((id) => !fijos.has(id));
+// El listado trae cuánto se ha pagado, pero no cuándo. Las fechas de cada pago
+// están en el detalle; se guardan junto con el monto pagado que tenían y solo
+// se vuelven a pedir si ese monto cambia (entró un pago nuevo).
+const pagos = new Map(); // id -> { pagado, transacciones: [{ fecha, monto }] }
+
+const montoPagado = (factura) => factura.payments?.paid_amount?.value ?? '0.00';
+
+function datosPagos(factura) {
+  return {
+    pagado: montoPagado(factura),
+    // `payment_date` (solo fecha) coincide con el día local; `payment_date_time`
+    // viene desfasado en sandbox, así que no se usa.
+    transacciones: (factura.payments?.transactions ?? []).map((t) => ({
+      fecha: t.payment_date ?? null,
+      monto: Number(t.amount?.value ?? 0),
+    })),
+  };
+}
+
+function recordarDetalle(factura) {
+  fijos.set(factura.id, datosFijos(factura));
+  pagos.set(factura.id, datosPagos(factura));
+}
+
+function necesitaDetalle(factura) {
+  if (!fijos.has(factura.id)) return true;
+  const pagado = montoPagado(factura);
+  return pagado !== '0.00' && pagos.get(factura.id)?.pagado !== pagado;
+}
+
+async function completarDetalles(facturas) {
+  const faltan = facturas.filter(necesitaDetalle).map((f) => f.id);
   // De 5 en 5 para no saturar la API con decenas de peticiones a la vez.
   for (let i = 0; i < faltan.length; i += 5) {
-    await Promise.all(faltan.slice(i, i + 5).map(async (id) => {
-      fijos.set(id, datosFijos(await obtenerFactura(id)));
-    }));
+    await Promise.all(faltan.slice(i, i + 5).map(async (id) => recordarDetalle(await obtenerFactura(id))));
   }
 }
 
+const adjuntar = (factura) => ({
+  ...factura,
+  fijos: fijos.get(factura.id),
+  transacciones: pagos.get(factura.id)?.transacciones ?? [],
+});
+
 export function recordarFijos(factura) {
-  fijos.set(factura.id, datosFijos(factura));
+  recordarDetalle(factura);
 }
 
-// Una factura leída con GET ya trae los datos fijos: se guardan y se adjuntan
+// Una factura leída con GET ya trae todo el detalle: se guarda y se adjunta
 // con la misma forma que usa listarFacturas.
 export function conFijos(factura) {
-  recordarFijos(factura);
-  return { ...factura, fijos: fijos.get(factura.id) };
+  recordarDetalle(factura);
+  return adjuntar(factura);
 }
 
 // Todas las facturas de la cuenta (hasta 500), más recientes primero.
@@ -154,8 +188,8 @@ export async function listarFacturas() {
     facturas.push(...(datos.items ?? []));
     if (pagina >= (datos.total_pages ?? 1)) break;
   }
-  await completarFijos(facturas.map((f) => f.id));
-  return facturas.map((f) => ({ ...f, fijos: fijos.get(f.id) }));
+  await completarDetalles(facturas);
+  return facturas.map(adjuntar);
 }
 
 // Crea el borrador, lo envía (así PayPal genera el enlace de pago) y devuelve

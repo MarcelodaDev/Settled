@@ -138,6 +138,27 @@
         </div>
       </div>
 
+      <form class="pregunta" id="form-pregunta">
+        <label for="pregunta" class="sr">Pregunta sobre tus cobros</label>
+        <input id="pregunta" class="pregunta__campo" maxlength="300" autocomplete="off"
+          placeholder="Pregunta lo que quieras: ¿quién me debe?">
+        <button type="submit" class="boton" id="boton-preguntar">Preguntar</button>
+      </form>
+      <p class="pregunta__ejemplos">
+        Prueba con
+        <button type="button" class="enlace pregunta-ejemplo">¿Quién me debe?</button>
+        <button type="button" class="enlace pregunta-ejemplo">¿Cuánto entró esta semana?</button>
+        <button type="button" class="enlace pregunta-ejemplo">¿Qué facturas están vencidas?</button>
+      </p>
+
+      <div class="respuesta" id="respuesta" aria-live="polite" hidden>
+        <p class="respuesta__texto" id="respuesta-texto"></p>
+        <p class="respuesta__meta">
+          <span id="respuesta-entendi"></span>
+          <button type="button" class="enlace" id="quitar-respuesta">Mostrar todas las facturas</button>
+        </p>
+      </div>
+
       <div class="cifras" id="cifras"></div>
 
       <div class="herramientas">

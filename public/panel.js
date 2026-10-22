@@ -38,6 +38,7 @@ const tema = themeQuartz.withParams({
 
 let api = null;
 let filtro = 'todas';
+let idsRespuesta = null; // facturas de la última pregunta, o null si no hay pregunta activa
 let filas = [];
 
 const FILTROS = {
@@ -238,6 +239,80 @@ function ajustarColumnas(ancho) {
   api.sizeColumnsToFit();
 }
 
+/* Preguntas en español */
+
+const NOMBRE_METRICA = {
+  pendiente: 'lo que te deben',
+  cobrado: 'pagos recibidos',
+  facturado: 'monto facturado',
+  cantidad: 'número de facturas',
+};
+const NOMBRE_ESTADO = { abiertas: 'por cobrar', vencidas: 'vencidas', pagadas: 'pagadas' };
+
+// Lo que entendió la IA, en palabras: así se ve que la respuesta no es una caja negra.
+function describirConsulta(datos) {
+  const c = datos.consulta;
+  const partes = [NOMBRE_METRICA[c.metrica]];
+  if (NOMBRE_ESTADO[c.estado]) partes.push(`facturas ${NOMBRE_ESTADO[c.estado]}`);
+  if (c.cliente) partes.push(`cliente: ${c.cliente}`);
+  partes.push(datos.periodo?.texto ?? 'todas las fechas');
+  return `Entendí: ${partes.join(' · ')}`;
+}
+
+function marcarFiltro(valor) {
+  filtro = valor;
+  for (const boton of document.querySelectorAll('.filtro')) {
+    boton.setAttribute('aria-pressed', String(boton.dataset.filtro === valor));
+  }
+}
+
+function quitarRespuesta({ refrescar = true } = {}) {
+  idsRespuesta = null;
+  $('#respuesta').hidden = true;
+  if (refrescar) api.onFilterChanged();
+}
+
+async function preguntar(texto) {
+  const pregunta = texto.trim();
+  if (!pregunta) return;
+  const boton = $('#boton-preguntar');
+  const caja = $('#respuesta');
+  boton.disabled = true;
+  boton.textContent = 'Pensando…';
+  caja.classList.remove('respuesta--error');
+  try {
+    const res = await fetch('/api/consultas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pregunta }),
+    });
+    const datos = await res.json();
+    if (!res.ok) throw new Error(datos.error || 'No pude responder esa pregunta.');
+
+    $('#respuesta-texto').textContent = datos.respuesta;
+    const sobreCobros = datos.consulta?.sobre_cobros !== false;
+    $('#respuesta-entendi').textContent = sobreCobros ? describirConsulta(datos) : '';
+    $('#quitar-respuesta').hidden = !sobreCobros;
+    caja.hidden = false;
+
+    if (sobreCobros) {
+      // La tabla muestra exactamente las facturas que sostienen la respuesta.
+      marcarFiltro('todas');
+      idsRespuesta = new Set(datos.ids);
+      api.onFilterChanged();
+    }
+  } catch (err) {
+    $('#respuesta-texto').textContent = err.message;
+    $('#respuesta-entendi').textContent = '';
+    $('#quitar-respuesta').hidden = true;
+    caja.classList.add('respuesta--error');
+    caja.hidden = false;
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Preguntar';
+  }
+}
+
 // Tras registrar un recordatorio, la fila se actualiza sin recargar desde PayPal.
 function actualizarFila(fila) {
   filas = filas.map((f) => (f.id === fila.id ? fila : f));
@@ -260,8 +335,8 @@ export function iniciarPanel() {
     onGridSizeChanged: (e) => ajustarColumnas(e.clientWidth),
     animateRows: true,
     suppressCellFocus: true,
-    isExternalFilterPresent: () => filtro !== 'todas',
-    doesExternalFilterPass: (nodo) => FILTROS[filtro](nodo.data),
+    isExternalFilterPresent: () => filtro !== 'todas' || idsRespuesta !== null,
+    doesExternalFilterPass: (nodo) => (idsRespuesta === null || idsRespuesta.has(nodo.data.id)) && FILTROS[filtro](nodo.data),
     onModelUpdated: actualizarTotales,
     rowClass: 'fila-pulsable',
     onRowClicked: (e) => {
@@ -281,14 +356,27 @@ export function iniciarPanel() {
 
   for (const boton of document.querySelectorAll('.filtro')) {
     boton.addEventListener('click', () => {
-      filtro = boton.dataset.filtro;
-      for (const otro of document.querySelectorAll('.filtro')) otro.setAttribute('aria-pressed', String(otro === boton));
+      // Elegir un estado a mano sustituye al filtro de la pregunta.
+      quitarRespuesta({ refrescar: false });
+      marcarFiltro(boton.dataset.filtro);
       api.onFilterChanged();
     });
   }
 
   $('#buscar').addEventListener('input', (e) => api.setGridOption('quickFilterText', e.target.value));
   $('#boton-actualizar').addEventListener('click', cargar);
+
+  $('#form-pregunta').addEventListener('submit', (e) => {
+    e.preventDefault();
+    preguntar($('#pregunta').value);
+  });
+  for (const ejemplo of document.querySelectorAll('.pregunta-ejemplo')) {
+    ejemplo.addEventListener('click', () => {
+      $('#pregunta').value = ejemplo.textContent.trim();
+      preguntar($('#pregunta').value);
+    });
+  }
+  $('#quitar-respuesta').addEventListener('click', () => quitarRespuesta());
 
   return { cargar };
 }

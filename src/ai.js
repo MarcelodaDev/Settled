@@ -135,6 +135,46 @@ export async function redactarRecordatorio(datos, tono, descripcionTono) {
   return llamarHerramienta({ sistema, usuario, herramienta: HERRAMIENTA_RECORDATORIO });
 }
 
+const HERRAMIENTA_CONSULTA = {
+  name: 'consultar_cobros',
+  description: 'Traduce la pregunta del freelancer a una consulta sobre sus facturas.',
+  parameters: {
+    type: 'object',
+    properties: {
+      sobre_cobros: { type: 'boolean', description: 'false si la pregunta no trata sobre sus cobros, facturas, pagos o clientes.' },
+      metrica: {
+        type: 'string',
+        enum: ['pendiente', 'cobrado', 'facturado', 'cantidad'],
+        description: 'pendiente: lo que le deben ("¿quién me debe?", "¿qué vence esta semana?"). cobrado: pagos recibidos ("¿cuánto entró?", "¿quién me pagó?"). facturado: monto total emitido. cantidad: cuántas facturas.',
+      },
+      estado: {
+        type: 'string',
+        enum: ['todas', 'abiertas', 'vencidas', 'pagadas'],
+        description: 'Filtro por estado de la factura. Usa vencidas solo si la pregunta habla de atrasos o vencidas. Usa pagadas solo para contar facturas pagadas por completo; para preguntas sobre pagos recibidos usa todas.',
+      },
+      cliente: { type: ['string', 'null'], description: 'Nombre del cliente si la pregunta se limita a uno; null si no.' },
+      periodo: {
+        type: ['string', 'null'],
+        enum: ['hoy', 'ayer', 'esta_semana', 'semana_pasada', 'este_mes', 'mes_pasado', 'ultimos_7_dias', 'ultimos_30_dias', 'este_anio', 'rango', null],
+        description: 'Periodo mencionado. Usa rango solo para fechas explícitas. null si no se menciona periodo.',
+      },
+      desde: { type: ['string', 'null'], description: 'Solo si periodo es rango: fecha inicial YYYY-MM-DD.' },
+      hasta: { type: ['string', 'null'], description: 'Solo si periodo es rango: fecha final YYYY-MM-DD.' },
+    },
+    required: ['sobre_cobros', 'metrica', 'estado', 'cliente', 'periodo', 'desde', 'hasta'],
+  },
+};
+
+export async function interpretarConsulta(pregunta, hoy) {
+  const sistema = [
+    'Traduces preguntas en español de un freelancer sobre sus cobros a una consulta estructurada.',
+    `Hoy es ${hoy} (zona horaria America/Guayaquil).`,
+    'No calculas ni respondes nada: solo eliges los filtros. Los cálculos los hace el sistema.',
+    'Ejemplos: "¿quién me debe?" → pendiente, todas. "¿cuánto entró esta semana?" → cobrado, esta_semana. "¿qué facturas están atrasadas?" → pendiente, vencidas. "¿cuánto le he cobrado a Juan este mes?" → cobrado, cliente Juan, este_mes.',
+  ].join('\n');
+  return llamarHerramienta({ sistema, usuario: pregunta, herramienta: HERRAMIENTA_CONSULTA });
+}
+
 export async function interpretarCobro(instruccion, hoy) {
   const sistema = [
     'Eres el asistente de cobros de un freelancer en Ecuador. Conviertes su instrucción en los datos de una factura.',

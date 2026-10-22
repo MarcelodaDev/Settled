@@ -329,10 +329,71 @@ body {
 .panel-cabecera__acciones { display: flex; align-items: baseline; gap: 20px; }
 .panel-cabecera .aviso { margin: 0; min-height: 0; }
 
+/* Preguntas */
+
+.pregunta {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  margin-top: 28px;
+}
+
+.pregunta__campo {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0 10px;
+  border: 0;
+  border-bottom: 1px solid var(--tinta);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tinta);
+  font: 400 clamp(20px, 2.6vw, 26px)/1.3 var(--serif);
+}
+
+.pregunta__campo::placeholder { color: #b3ac9c; font-style: italic; }
+.pregunta__campo:focus { outline: none; border-bottom-width: 2px; padding-bottom: 9px; }
+
+.pregunta__ejemplos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--gris);
+}
+
+.pregunta__ejemplos .enlace { font: italic 15px/1.4 var(--serif); color: var(--gris); }
+
+.respuesta {
+  margin-top: 28px;
+  padding: 4px 0 4px 20px;
+  border-left: 2px solid var(--acento);
+}
+
+.respuesta__texto {
+  margin: 0;
+  max-width: 40em;
+  font: 400 clamp(20px, 2.4vw, 24px)/1.4 var(--serif);
+}
+
+.respuesta__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--gris);
+}
+
+.respuesta__meta .enlace { font-size: 13px; }
+.respuesta--error { border-left-color: var(--gris); }
+.respuesta--error .respuesta__texto { font-size: 18px; color: var(--gris); }
+
 .cifras {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  margin: 28px 0 40px;
+  margin: 40px 0 40px;
   border-top: 1px solid var(--tinta);
   border-bottom: 1px solid var(--filete);
 }
@@ -584,4 +645,6 @@ body.con-detalle { overflow: hidden; }
   .cifra-bloque { padding: 14px 0; border-left: 0; border-top: 1px solid var(--filete); }
   .cifra-bloque:first-child { border-top: 0; }
   .detalle { padding: 20px 16px 40px; border-left: 0; }
+  .pregunta { flex-direction: column; align-items: stretch; gap: 14px; }
+  .pregunta .boton { align-self: flex-start; }
 }
