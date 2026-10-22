@@ -20,13 +20,38 @@ export class PayPalError extends Error {
 
 let token = null; // { valor, expira }
 
+// Si PayPal no contesta en este tiempo, se corta: mejor un error claro que un
+// botón esperando para siempre.
+const LIMITE_MS = 15000;
+
+// fetch con límite de tiempo. Un corte o un fallo de red se convierte en un
+// PayPalError con status 0, que el usuario ve como "no pudimos hablar con PayPal".
+async function llamar(url, opciones) {
+  try {
+    return await fetch(url, { ...opciones, signal: AbortSignal.timeout(LIMITE_MS) });
+  } catch (causa) {
+    console.error(`[paypal] sin respuesta de ${url}: ${causa.name}`);
+    throw new PayPalError(0, { name: 'SIN_CONEXION' });
+  }
+}
+
+// PayPal a veces responde con HTML (errores 5xx de su borde): no es JSON.
+async function leerJson(res) {
+  const texto = await res.text();
+  try {
+    return texto ? JSON.parse(texto) : {};
+  } catch {
+    return {};
+  }
+}
+
 async function obtenerToken() {
   if (token && Date.now() < token.expira) return token.valor;
 
   const { PAYPAL_CLIENT_ID: id, PAYPAL_CLIENT_SECRET: secreto } = process.env;
-  if (!id || !secreto) throw new Error('Faltan PAYPAL_CLIENT_ID o PAYPAL_CLIENT_SECRET en el entorno.');
+  if (!id || !secreto) throw new PayPalError(401, { name: 'invalid_client' });
 
-  const res = await fetch(`${BASE}/v1/oauth2/token`, {
+  const res = await llamar(`${BASE}/v1/oauth2/token`, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${Buffer.from(`${id}:${secreto}`).toString('base64')}`,
@@ -34,7 +59,7 @@ async function obtenerToken() {
     },
     body: 'grant_type=client_credentials',
   });
-  const cuerpo = await res.json().catch(() => ({}));
+  const cuerpo = await leerJson(res);
   if (!res.ok) throw new PayPalError(res.status, cuerpo);
 
   // Renovamos un minuto antes de que caduque.
@@ -42,8 +67,8 @@ async function obtenerToken() {
   return token.valor;
 }
 
-async function pedir(metodo, ruta, cuerpo, cabeceras = {}) {
-  const res = await fetch(`${BASE}${ruta}`, {
+async function pedir(metodo, ruta, cuerpo, cabeceras = {}, reintento = false) {
+  const res = await llamar(`${BASE}${ruta}`, {
     method: metodo,
     headers: {
       Authorization: `Bearer ${await obtenerToken()}`,
@@ -52,8 +77,14 @@ async function pedir(metodo, ruta, cuerpo, cabeceras = {}) {
     },
     body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
   });
-  const texto = await res.text();
-  const datos = texto ? JSON.parse(texto) : {};
+
+  // Token revocado o caducado antes de tiempo: se pide uno nuevo una sola vez.
+  if (res.status === 401 && !reintento) {
+    token = null;
+    return pedir(metodo, ruta, cuerpo, cabeceras, true);
+  }
+
+  const datos = await leerJson(res);
   if (!res.ok) {
     const error = new PayPalError(res.status, datos);
     console.error(`[paypal] ${metodo} ${ruta} -> ${res.status} ${error.issue ?? ''} debug_id=${error.debugId ?? '-'}`);
@@ -202,11 +233,19 @@ export async function crearYEnviar(cobro, numeroFactura) {
   const id = creada.id ?? creada.href?.split('/').pop();
   if (!id) throw new Error('PayPal no devolvió el id de la factura.');
 
-  await pedir('POST', `/v2/invoicing/invoices/${encodeURIComponent(id)}/send`, {
-    // Sin correo del cliente no hay a quién enviarla: se comparte el enlace.
-    send_to_recipient: Boolean(cobro.cliente_email),
-    send_to_invoicer: false,
-  });
+  try {
+    await pedir('POST', `/v2/invoicing/invoices/${encodeURIComponent(id)}/send`, {
+      // Sin correo del cliente no hay a quién enviarla: se comparte el enlace.
+      send_to_recipient: Boolean(cobro.cliente_email),
+      send_to_invoicer: false,
+    });
+  } catch (error) {
+    // Si el envío falla, el borrador quedaría huérfano y al reintentar PayPal
+    // rechazaría el número como duplicado. Se borra para que el reintento funcione.
+    await pedir('DELETE', `/v2/invoicing/invoices/${encodeURIComponent(id)}`).catch((e) =>
+      console.error(`[paypal] no se pudo borrar el borrador ${id}: ${e.issue ?? e.message}`));
+    throw error;
+  }
 
   const factura = await obtenerFactura(id);
   recordarFijos(factura);
@@ -224,6 +263,7 @@ export function claveDeError(error) {
       return 'paypal.credenciales';
     default:
       if (error.status === 401 || error.status === 403) return 'paypal.acceso';
+      if (error.status === 404) return 'paypal.no_encontrada';
       if (error.status === 400 || error.status === 422) return 'paypal.datos';
       return 'paypal.conexion';
   }

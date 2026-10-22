@@ -41,6 +41,7 @@ let api = null;
 let filtro = 'todas';
 let idsRespuesta = null; // facturas de la última pregunta, o null si no hay pregunta activa
 let filas = [];
+let cargado = false; // hasta la primera respuesta de PayPal, las cifras muestran "—"
 
 const FILTROS = {
   todas: () => true,
@@ -177,11 +178,11 @@ function pintarCifras() {
   ];
 
   $('#cifras').replaceChildren(...cifras.map(([etiqueta, valor, cuenta, clase]) => {
-    const bloque = el('div', `cifra-bloque ${clase}`);
+    const bloque = el('div', `cifra-bloque ${clase} ${cargado ? '' : 'cifra-bloque--cargando'}`);
     bloque.append(
       el('span', 'cifra-bloque__etiqueta', etiqueta),
-      el('span', 'cifra-bloque__valor', dinero(valor)),
-      el('span', 'cifra-bloque__cuenta', t('facturas', { n: cuenta })),
+      el('span', 'cifra-bloque__valor', cargado ? dinero(valor) : '—'),
+      el('span', 'cifra-bloque__cuenta', cargado ? t('facturas', { n: cuenta }) : ' '),
     );
     return bloque;
   }));
@@ -199,15 +200,24 @@ async function cargar() {
   const aviso = $('#aviso-panel');
   boton.disabled = true;
   aviso.textContent = t('panel.consultando');
+  // Sin datos todavía, la tabla muestra "cargando" en vez de "no hay cobros".
+  if (!filas.length) api.setGridOption('loading', true);
   try {
     const datos = await llamar('GET', '/api/cobros');
     filas = datos.cobros;
+    cargado = true;
     api.setGridOption('rowData', filas);
     pintarCifras();
+    $('#error-panel').hidden = true;
     aviso.textContent = t('panel.actualizado', { hora: hora() });
   } catch (err) {
-    aviso.textContent = err.message;
+    // Un fallo no es lo mismo que "no hay facturas": se dice claramente y se
+    // conservan las filas que ya se veían.
+    $('#error-panel-texto').textContent = t('panel.error_carga', { motivo: err.message });
+    $('#error-panel').hidden = false;
+    aviso.textContent = '';
   } finally {
+    api.setGridOption('loading', false);
     boton.disabled = false;
   }
 }
@@ -368,6 +378,7 @@ export function iniciarPanel() {
 
   $('#buscar').addEventListener('input', (e) => api.setGridOption('quickFilterText', e.target.value));
   $('#boton-actualizar').addEventListener('click', cargar);
+  $('#boton-reintentar').addEventListener('click', cargar);
 
   $('#form-pregunta').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -382,6 +393,7 @@ export function iniciarPanel() {
   $('#quitar-respuesta').addEventListener('click', () => quitarRespuesta());
 
   alCambiarIdioma(retraducirPanel);
+  pintarCifras();
 
   return { cargar };
 }

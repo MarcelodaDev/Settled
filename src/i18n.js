@@ -28,15 +28,17 @@ const MENSAJES = {
     'ia.ilegible': 'The AI returned something unreadable. Try rephrasing.',
 
     'paypal.duplicada': 'This invoice was already created. Check your invoices before trying again.',
-    'paypal.credenciales': 'The PayPal credentials aren’t valid. Check the .env file.',
+    'paypal.credenciales': 'The PayPal credentials aren’t valid. Check the server configuration.',
     'paypal.acceso': 'PayPal denied access. Check that the app has Invoicing permission.',
     'paypal.datos': 'PayPal didn’t accept the invoice data. Check the email, amount and date.',
     'paypal.conexion': 'We couldn’t reach PayPal. Try again in a few seconds.',
+    'paypal.no_encontrada': 'That invoice doesn’t exist in PayPal.',
 
     'limite.ia': 'You’ve made a lot of requests in a row. Wait a few minutes and try again.',
     'limite.facturas': 'The test invoice limit has been reached for now. Try again later.',
 
     'servidor.json': 'The request isn’t valid JSON.',
+    'servidor.grande': 'The request is too large.',
     'servidor.error': 'Something went wrong on the server.',
   },
   es: {
@@ -65,15 +67,17 @@ const MENSAJES = {
     'ia.ilegible': 'La IA devolvió algo ilegible. Prueba a reformularlo.',
 
     'paypal.duplicada': 'Esta factura ya se había creado. Revisa tus cobros antes de intentarlo de nuevo.',
-    'paypal.credenciales': 'Las credenciales de PayPal no son válidas. Revisa el archivo .env.',
+    'paypal.credenciales': 'Las credenciales de PayPal no son válidas. Revisa la configuración del servidor.',
     'paypal.acceso': 'PayPal rechazó el acceso. Revisa que la app tenga permiso de Invoicing.',
     'paypal.datos': 'PayPal no aceptó los datos de la factura. Revisa el correo, el monto y la fecha.',
     'paypal.conexion': 'No pudimos hablar con PayPal. Inténtalo de nuevo en unos segundos.',
+    'paypal.no_encontrada': 'Esa factura no existe en PayPal.',
 
     'limite.ia': 'Has hecho muchas consultas seguidas. Espera unos minutos e inténtalo de nuevo.',
     'limite.facturas': 'Se alcanzó el límite de facturas de prueba por ahora. Inténtalo más tarde.',
 
     'servidor.json': 'La petición no es JSON válido.',
+    'servidor.grande': 'La petición es demasiado grande.',
     'servidor.error': 'Algo salió mal en el servidor.',
   },
 };

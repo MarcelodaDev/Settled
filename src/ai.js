@@ -21,7 +21,9 @@ async function llamarHerramienta({ sistema, usuario, herramienta }) {
   const { OPENROUTER_API_KEY: clave, OPENROUTER_MODEL: modelo } = process.env;
   if (!clave || !modelo) throw new IAError('ia.config');
 
+  // Un modelo lento o caído no debe dejar el botón en "Pensando…" para siempre.
   const res = await fetch(URL, {
+    signal: AbortSignal.timeout(30000),
     method: 'POST',
     headers: {
       Authorization: `Bearer ${clave}`,
@@ -38,6 +40,10 @@ async function llamarHerramienta({ sistema, usuario, herramienta }) {
       tools: [{ type: 'function', function: herramienta }],
       tool_choice: { type: 'function', function: { name: herramienta.name } },
     }),
+  }).catch((causa) => {
+    // Corte por tiempo o fallo de red: para el usuario, la IA no está disponible.
+    console.error(`[ia] sin respuesta: ${causa.name}`);
+    throw new IAError('ia.no_disponible', causa);
   });
 
   const datos = await res.json().catch(() => ({}));

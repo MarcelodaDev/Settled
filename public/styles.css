@@ -7,6 +7,8 @@
   --filete: #d6cfbf;
   --acento: #a8321f;
   --ok: #2f5d3a;
+  /* Agregado de apoyo: neutro para placeholders (3.6:1 sobre el papel). */
+  --gris-suave: #857e70;
 
   --serif: 'Newsreader', Georgia, serif;
   --sans: 'Instrument Sans', system-ui, sans-serif;
@@ -97,7 +99,7 @@ body {
 .idioma:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
 
 .ejemplo-otro-idioma { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
-.ejemplo__nota { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--acento); }
+.ejemplo__nota { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gris); }
 
 .idioma-mensaje {
   display: flex;
@@ -190,7 +192,7 @@ body {
   resize: vertical;
 }
 
-.instruccion::placeholder { color: #b3ac9c; }
+.instruccion::placeholder { color: var(--gris-suave); }
 .instruccion:focus { outline: none; border-bottom-width: 2px; padding-bottom: 11px; }
 
 /* Botones */
@@ -215,6 +217,7 @@ body {
   cursor: pointer;
 }
 
+.boton { transition: background-color 0.15s ease, color 0.15s ease; }
 .boton:hover { background: var(--papel); color: var(--tinta); }
 .boton:focus-visible, .enlace:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
 .boton[disabled] { opacity: 0.45; cursor: progress; }
@@ -232,7 +235,9 @@ body {
   cursor: pointer;
 }
 
+.enlace { transition: text-decoration-color 0.15s ease, color 0.15s ease; }
 .enlace:hover { text-decoration-color: var(--tinta); }
+.navegacion a, .filtro, .tono, .idioma { transition: color 0.15s ease, border-color 0.15s ease; }
 
 .ejemplos {
   display: flex;
@@ -276,7 +281,7 @@ body {
   color: var(--gris);
 }
 
-.opcional { text-transform: none; letter-spacing: 0; color: #a39c8c; margin-left: 4px; }
+.opcional { text-transform: none; letter-spacing: 0; color: var(--gris); margin-left: 4px; }
 
 .fila input, .fila textarea {
   width: 100%;
@@ -291,7 +296,7 @@ body {
 
 .fila input.cifra { font: 400 16px/1.4 var(--mono); }
 .fila textarea { resize: vertical; }
-.fila input::placeholder, .fila textarea::placeholder { color: #b3ac9c; font-style: italic; }
+.fila input::placeholder, .fila textarea::placeholder { color: var(--gris-suave); font-style: italic; }
 .fila input:focus, .fila textarea:focus { outline: none; border-bottom-color: var(--tinta); }
 .fila input[aria-invalid="true"] { border-bottom-color: var(--acento); }
 
@@ -302,7 +307,7 @@ body {
 
 .margen {
   padding-left: 16px;
-  border-left: 1px solid var(--acento);
+  border-left: 1px solid var(--tinta);
 }
 
 .margen__titulo {
@@ -310,7 +315,7 @@ body {
   font: 500 12px/1 var(--sans);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--acento);
+  color: var(--tinta);
 }
 
 .margen ul { margin: 0; padding: 0; list-style: none; }
@@ -341,6 +346,9 @@ body {
 }
 
 .aviso { min-height: 1.5em; margin: 16px 0 0; color: var(--gris); font-size: 14px; }
+
+.error--panel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 0 0 16px; }
+.error--panel .enlace { color: var(--acento); text-decoration-color: currentColor; font-size: 15px; }
 
 .estado { font-family: var(--sans); font-size: 15px; font-weight: 500; }
 .estado--pagada { color: var(--ok); }
@@ -382,7 +390,7 @@ body {
   font: 400 clamp(20px, 2.6vw, 26px)/1.3 var(--serif);
 }
 
-.pregunta__campo::placeholder { color: #b3ac9c; font-style: italic; }
+.pregunta__campo::placeholder { color: var(--gris-suave); font-style: italic; }
 .pregunta__campo:focus { outline: none; border-bottom-width: 2px; padding-bottom: 9px; }
 
 .pregunta__ejemplos {
@@ -400,7 +408,7 @@ body {
 .respuesta {
   margin-top: 28px;
   padding: 4px 0 4px 20px;
-  border-left: 2px solid var(--acento);
+  border-left: 2px solid var(--tinta);
 }
 
 .respuesta__texto {
@@ -454,6 +462,7 @@ body {
 }
 
 .cifra-bloque__cuenta { font-size: 13px; color: var(--gris); }
+.cifra-bloque--cargando .cifra-bloque__valor { color: var(--gris-suave); }
 .cifra--alerta .cifra-bloque__valor, .cifra--alerta .cifra-bloque__etiqueta { color: var(--acento); }
 
 .herramientas {
@@ -493,7 +502,7 @@ body {
   font: 400 16px/1.4 var(--serif);
 }
 
-.buscar input::placeholder { color: #a39c8c; font-style: italic; }
+.buscar input::placeholder { color: var(--gris-suave); font-style: italic; }
 .buscar input:focus { outline: none; border-bottom-color: var(--tinta); }
 
 /* Ajustes de AG Grid que el tema no cubre: cabeceras en versalitas y celdas a dos líneas */
@@ -516,14 +525,14 @@ body {
 }
 
 .celda-doble__secundaria {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--gris);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.celda-cifra { font-family: var(--mono); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.celda-cifra { font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
 .celda-pendiente { font-weight: 500; }
 .texto-vencido { color: var(--acento); }
 
@@ -634,7 +643,7 @@ body.con-detalle { overflow: hidden; }
 .tono:hover { color: var(--tinta); }
 .tono[aria-checked="true"] { color: var(--tinta); border-bottom-color: var(--tinta); }
 .tono:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
-.tono__sugerido { margin-left: 4px; font: italic 400 13px var(--serif); color: var(--acento); }
+.tono__sugerido { margin-left: 4px; font: italic 400 13px var(--serif); color: var(--gris); }
 
 .borrador { margin-top: 24px; }
 
@@ -679,4 +688,8 @@ body.con-detalle { overflow: hidden; }
   .detalle { padding: 20px 16px 40px; border-left: 0; }
   .pregunta { flex-direction: column; align-items: stretch; gap: 14px; }
   .pregunta .boton { align-self: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
 }

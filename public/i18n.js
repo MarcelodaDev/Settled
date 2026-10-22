@@ -111,7 +111,7 @@ const TEXTOS = {
     'col.estado': 'Status',
     'col.total': 'Total',
     'col.cobrado': 'Collected',
-    'col.pendiente': 'Outstanding',
+    'col.pendiente': 'Balance',
     'tabla.total': 'Total',
     'tabla.al_recibir': 'On receipt',
     'tabla.pago': 'Pay ↗',
@@ -129,7 +129,7 @@ const TEXTOS = {
 
     'estado.DRAFT': 'Draft',
     'estado.SCHEDULED': 'Scheduled',
-    'estado.SENT': 'Sent, awaiting payment',
+    'estado.SENT': 'Sent',
     'estado.UNPAID': 'Awaiting payment',
     'estado.PARTIALLY_PAID': 'Deposit received',
     'estado.PAYMENT_PENDING': 'Payment pending',
@@ -174,6 +174,9 @@ const TEXTOS = {
     'canal.correo': 'email',
 
     'error.generico': 'The action could not be completed.',
+    'error.red': 'We couldn’t reach the server. Check your connection and try again; if the demo was asleep, it may take a minute to wake up.',
+    'panel.error_carga': ({ motivo }) => `Couldn’t load your invoices: ${motivo}`,
+    'panel.reintentar': 'Try again',
   },
 
   es: {
@@ -300,7 +303,7 @@ const TEXTOS = {
 
     'estado.DRAFT': 'Borrador',
     'estado.SCHEDULED': 'Programada',
-    'estado.SENT': 'Enviada, por cobrar',
+    'estado.SENT': 'Enviada',
     'estado.UNPAID': 'Por cobrar',
     'estado.PARTIALLY_PAID': 'Anticipo recibido',
     'estado.PAYMENT_PENDING': 'Pago en proceso',
@@ -345,6 +348,9 @@ const TEXTOS = {
     'canal.correo': 'correo',
 
     'error.generico': 'No se pudo completar la acción.',
+    'error.red': 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo; si la demo estaba dormida, puede tardar un minuto en despertar.',
+    'panel.error_carga': ({ motivo }) => `No se pudieron cargar tus cobros: ${motivo}`,
+    'panel.reintentar': 'Reintentar',
   },
 };
 

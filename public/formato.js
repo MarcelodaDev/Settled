@@ -63,10 +63,19 @@ export function el(etiqueta, clase, texto) {
 export async function api(metodo, ruta, cuerpo) {
   const cabeceras = { 'X-Idioma': idiomaActual() };
   if (cuerpo) cabeceras['Content-Type'] = 'application/json';
-  const res = await fetch(ruta, { method: metodo, headers: cabeceras, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
+  let res;
+  try {
+    res = await fetch(ruta, { method: metodo, headers: cabeceras, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
+  } catch {
+    // Sin respuesta del servidor (caído, redesplegando o sin internet): el
+    // navegador lanzaría "Failed to fetch", que no le dice nada al usuario.
+    throw new Error(t('error.red'));
+  }
   const datos = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const error = new Error(datos.error || t('error.generico'));
+    // Un 502/503 sin JSON es la página de error de Render (despliegue o arranque).
+    const sinServidor = !datos.error && res.status >= 502;
+    const error = new Error(datos.error || t(sinServidor ? 'error.red' : 'error.generico'));
     error.errores = datos.errores;
     throw error;
   }
