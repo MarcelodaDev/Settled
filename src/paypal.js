@@ -214,20 +214,17 @@ export async function crearYEnviar(cobro, numeroFactura) {
 }
 
 // Mensaje propio para el usuario: nunca mostramos el `message` crudo de PayPal.
-export function mensajeParaUsuario(error) {
+// Devuelve una clave de src/i18n.js.
+export function claveDeError(error) {
   switch (error.issue) {
     case 'DUPLICATE_INVOICE_NUMBER':
     case 'DUPLICATE_INVOICE_ID':
-      return 'Esta factura ya se había creado. Revisa tus cobros antes de intentarlo de nuevo.';
+      return 'paypal.duplicada';
     case 'invalid_client':
-      return 'Las credenciales de PayPal no son válidas. Revisa el archivo .env.';
+      return 'paypal.credenciales';
     default:
-      if (error.status === 401 || error.status === 403) {
-        return 'PayPal rechazó el acceso. Revisa que la app tenga permiso de Invoicing.';
-      }
-      if (error.status === 400 || error.status === 422) {
-        return 'PayPal no aceptó los datos de la factura. Revisa el correo, el monto y la fecha.';
-      }
-      return 'No pudimos hablar con PayPal. Inténtalo de nuevo en unos segundos.';
+      if (error.status === 401 || error.status === 403) return 'paypal.acceso';
+      if (error.status === 400 || error.status === 422) return 'paypal.datos';
+      return 'paypal.conexion';
   }
 }

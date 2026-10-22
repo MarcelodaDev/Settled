@@ -1,6 +1,8 @@
 // Reglas del recordatorio. El tono lo decide el código según el atraso, para que
 // sea predecible; la IA solo redacta dentro del tono que se le indica.
 
+import { locale } from './i18n.js';
+
 export const TONOS = {
   amable: 'Amable: un recordatorio cordial, sin presión. La factura aún no vence o vence pronto.',
   firme: 'Firme: cortés pero directo. La factura ya venció; pide el pago con una fecha concreta.',
@@ -9,24 +11,42 @@ export const TONOS = {
 
 export const MARCA_ENLACE = '{{enlace}}';
 
-const usd = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' });
-const fechaLarga = new Intl.DateTimeFormat('es-EC', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const DIA = 24 * 60 * 60 * 1000;
 
-const fecha = (iso) => fechaLarga.format(new Date(`${iso}T00:00:00Z`));
-const dias = (n) => (n === 1 ? '1 día' : `${n} días`);
+const fecha = (iso, idioma) => new Intl.DateTimeFormat(locale(idioma), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+  .format(new Date(`${iso}T00:00:00Z`));
 
 // La situación del plazo se redacta aquí, ya calculada, para que la IA no
-// tenga que deducir fechas ni atrasos (y no pueda inventarlos).
-export function describirPlazo(fila, hoy) {
-  if (!fila.vence) return 'La factura no tiene fecha de vencimiento: se paga al recibirla.';
-  if (fila.vencida) return `La factura venció el ${fecha(fila.vence)}; lleva ${dias(fila.dias_atraso)} de atraso.`;
+// tenga que deducir fechas ni atrasos (y no pueda inventarlos). Va en el
+// idioma del mensaje para que la IA la copie tal cual, sin traducir fechas.
+const PLAZOS = {
+  es: {
+    dias: (n) => (n === 1 ? '1 día' : `${n} días`),
+    sinFecha: () => 'La factura no tiene fecha de vencimiento: se paga al recibirla.',
+    vencida: (f, n) => `La factura venció el ${f}; lleva ${PLAZOS.es.dias(n)} de atraso.`,
+    hoy: (f) => `La factura vence hoy, ${f}.`,
+    faltan: (f, n) => `La factura vence el ${f}, dentro de ${PLAZOS.es.dias(n)}. Todavía no está vencida.`,
+  },
+  en: {
+    dias: (n) => (n === 1 ? '1 day' : `${n} days`),
+    sinFecha: () => 'The invoice has no due date: it is payable on receipt.',
+    vencida: (f, n) => `The invoice was due on ${f}; it is ${PLAZOS.en.dias(n)} overdue.`,
+    hoy: (f) => `The invoice is due today, ${f}.`,
+    faltan: (f, n) => `The invoice is due on ${f}, in ${PLAZOS.en.dias(n)}. It is not overdue yet.`,
+  },
+};
+
+export function describirPlazo(fila, hoy, idioma = 'en') {
+  const textos = PLAZOS[idioma] ?? PLAZOS.en;
+  if (!fila.vence) return textos.sinFecha();
+  const f = fecha(fila.vence, idioma);
+  if (fila.vencida) return textos.vencida(f, fila.dias_atraso);
   const faltan = Math.round((Date.parse(fila.vence) - Date.parse(hoy)) / DIA);
-  if (faltan === 0) return `La factura vence hoy, ${fecha(fila.vence)}.`;
-  return `La factura vence el ${fecha(fila.vence)}, dentro de ${dias(faltan)}. Todavía no está vencida.`;
+  return faltan === 0 ? textos.hoy(f) : textos.faltan(f, faltan);
 }
 
-export const formatearMonto = (valor) => usd.format(valor);
+export const formatearMonto = (valor, idioma = 'en') =>
+  new Intl.NumberFormat(locale(idioma), { style: 'currency', currency: 'USD' }).format(valor);
 
 export function tonoSugerido(diasAtraso) {
   if (diasAtraso <= 0) return 'amable';

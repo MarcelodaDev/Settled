@@ -77,6 +77,38 @@ body {
 
 .sandbox { color: var(--acento); }
 
+/* Selector de idioma: enlaces de texto, como los filtros */
+
+.idiomas { display: inline-flex; gap: 10px; padding-left: 18px; border-left: 1px solid var(--filete); }
+
+.idioma {
+  padding: 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  color: var(--gris);
+  font: 500 12px/1 var(--sans);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.idioma:hover { color: var(--tinta); }
+.idioma[aria-pressed="true"] { color: var(--tinta); border-bottom-color: var(--tinta); }
+.idioma:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
+
+.ejemplo-otro-idioma { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.ejemplo__nota { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--acento); }
+
+.idioma-mensaje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+  margin: -6px 0 20px;
+  font-size: 13px;
+  color: var(--gris);
+}
+
 /* Página y pasos */
 
 .pagina {

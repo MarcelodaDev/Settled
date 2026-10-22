@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,40 +12,47 @@
 <body>
   <header class="cabecera">
     <div class="cabecera__marca">PayFlow</div>
-    <nav class="navegacion" aria-label="Secciones">
-      <a href="#nuevo" data-pantalla="nuevo">Nuevo cobro</a>
-      <a href="#cobros" data-pantalla="cobros">Cobros</a>
+    <nav class="navegacion" data-i18n-aria-label="nav.secciones">
+      <a href="#nuevo" data-pantalla="nuevo" data-i18n="nav.nuevo"></a>
+      <a href="#cobros" data-pantalla="cobros" data-i18n="nav.cobros"></a>
     </nav>
     <div class="cabecera__meta">
       <span id="fecha-hoy"></span>
       <span class="sandbox">PayPal sandbox</span>
+      <span class="idiomas" role="group" data-i18n-aria-label="idioma.grupo">
+        <button type="button" class="idioma" data-idioma="en" lang="en" aria-pressed="true">EN</button>
+        <button type="button" class="idioma" data-idioma="es" lang="es" aria-pressed="false">ES</button>
+      </span>
     </div>
   </header>
 
   <main class="pagina">
     <!-- Pantalla: nuevo cobro -->
     <div id="pantalla-nuevo" class="pantalla">
-      <ol class="pasos" aria-label="Pasos">
-        <li class="paso" data-paso="1"><span class="paso__num">01</span>Instrucción</li>
-        <li class="paso" data-paso="2"><span class="paso__num">02</span>Revisión</li>
-        <li class="paso" data-paso="3"><span class="paso__num">03</span>Factura</li>
+      <ol class="pasos" data-i18n-aria-label="pasos.grupo">
+        <li class="paso" data-paso="1"><span class="paso__num">01</span><span data-i18n="pasos.1"></span></li>
+        <li class="paso" data-paso="2"><span class="paso__num">02</span><span data-i18n="pasos.2"></span></li>
+        <li class="paso" data-paso="3"><span class="paso__num">03</span><span data-i18n="pasos.3"></span></li>
       </ol>
 
       <!-- 01 · Instrucción -->
       <section id="vista-1" class="vista">
-        <h1 class="titular">¿Qué hay que cobrar?</h1>
-        <p class="entradilla">Escríbelo como se lo dirías a un asistente. Nada se crea en PayPal hasta que lo revises.</p>
+        <h1 class="titular" data-i18n="v1.titular"></h1>
+        <p class="entradilla" data-i18n="v1.entradilla"></p>
 
         <form id="form-instruccion">
-          <label for="texto" class="sr">Instrucción de cobro</label>
-          <textarea id="texto" class="instruccion" rows="3" maxlength="1000"
-            placeholder="Cóbrale $300 a Juan por el sitio web, 50% de anticipo, que pague en 15 días"></textarea>
+          <label for="texto" class="sr" data-i18n="v1.etiqueta"></label>
+          <textarea id="texto" class="instruccion" rows="3" maxlength="1000" data-i18n-placeholder="v1.placeholder"></textarea>
           <div class="acciones">
-            <button type="submit" class="boton" id="boton-interpretar">Interpretar</button>
+            <button type="submit" class="boton" id="boton-interpretar" data-i18n="v1.boton"></button>
             <span class="ejemplos">
-              Ejemplos:
-              <button type="button" class="enlace ejemplo">Cóbrale $300 a Juan por el sitio web, 50% de anticipo, que pague en 15 días</button>
-              <button type="button" class="enlace ejemplo">Factura de $1.200 a Estudio Ruiz (ana@estudioruiz.ec) por el rediseño de marca, vence el 30 de noviembre</button>
+              <span data-i18n="v1.ejemplos"></span>
+              <button type="button" class="enlace ejemplo" data-i18n="v1.ejemplo1"></button>
+              <button type="button" class="enlace ejemplo" data-i18n="v1.ejemplo2"></button>
+              <span class="ejemplo-otro-idioma">
+                <button type="button" class="enlace ejemplo" data-i18n="v1.ejemplo3"></button>
+                <span class="ejemplo__nota" data-i18n="v1.ejemplo3.nota"></span>
+              </span>
             </span>
           </div>
         </form>
@@ -54,43 +61,43 @@
 
       <!-- 02 · Revisión -->
       <section id="vista-2" class="vista" hidden>
-        <h1 class="titular">Revisa antes de crear</h1>
+        <h1 class="titular" data-i18n="v2.titular"></h1>
         <p class="cita" id="texto-original"></p>
 
         <div class="revision">
           <form id="form-cobro" class="libro" novalidate>
             <div class="fila">
-              <label for="f-nombre">Cliente</label>
+              <label for="f-nombre" data-i18n="v2.cliente"></label>
               <input id="f-nombre" name="cliente_nombre" autocomplete="off" required>
             </div>
             <div class="fila">
-              <label for="f-email">Correo <span class="opcional">opcional</span></label>
-              <input id="f-email" name="cliente_email" type="email" autocomplete="off" placeholder="Sin correo, compartes tú el enlace">
+              <label for="f-email"><span data-i18n="v2.correo"></span> <span class="opcional" data-i18n="v2.opcional"></span></label>
+              <input id="f-email" name="cliente_email" type="email" autocomplete="off" data-i18n-placeholder="v2.correo.placeholder">
             </div>
             <div class="fila">
-              <label for="f-concepto">Concepto</label>
+              <label for="f-concepto" data-i18n="v2.concepto"></label>
               <input id="f-concepto" name="concepto" autocomplete="off" required>
             </div>
             <div class="fila">
-              <label for="f-monto">Monto <span class="opcional">USD</span></label>
+              <label for="f-monto"><span data-i18n="v2.monto"></span> <span class="opcional">USD</span></label>
               <input id="f-monto" name="monto" class="cifra" inputmode="decimal" required>
             </div>
             <div class="fila">
-              <label for="f-anticipo">Anticipo <span class="opcional">%</span></label>
-              <input id="f-anticipo" name="anticipo_pct" class="cifra" inputmode="numeric" placeholder="Sin anticipo">
+              <label for="f-anticipo"><span data-i18n="v2.anticipo"></span> <span class="opcional">%</span></label>
+              <input id="f-anticipo" name="anticipo_pct" class="cifra" inputmode="numeric" data-i18n-placeholder="v2.anticipo.placeholder">
             </div>
             <div class="fila">
-              <label for="f-vence">Vence</label>
+              <label for="f-vence" data-i18n="v2.vence"></label>
               <input id="f-vence" name="fecha_vencimiento" type="date" class="cifra">
             </div>
             <div class="fila">
-              <label for="f-nota">Nota al cliente</label>
+              <label for="f-nota" data-i18n="v2.nota"></label>
               <textarea id="f-nota" name="nota_cliente" rows="2"></textarea>
             </div>
           </form>
 
           <aside class="margen" id="notas-ia" hidden>
-            <h2 class="margen__titulo">Notas de la IA</h2>
+            <h2 class="margen__titulo" data-i18n="v2.notas_ia"></h2>
             <ul id="lista-notas"></ul>
           </aside>
         </div>
@@ -99,30 +106,30 @@
         <ul class="error" id="errores-2" role="alert" hidden></ul>
 
         <div class="acciones">
-          <button type="button" class="boton" id="boton-crear">Crear factura en PayPal</button>
-          <button type="button" class="enlace" id="boton-volver">Volver a escribir</button>
+          <button type="button" class="boton" id="boton-crear" data-i18n="v2.crear"></button>
+          <button type="button" class="enlace" id="boton-volver" data-i18n="v2.volver"></button>
         </div>
       </section>
 
       <!-- 03 · Factura -->
       <section id="vista-3" class="vista" hidden>
-        <p class="antetitulo">Factura emitida</p>
+        <p class="antetitulo" data-i18n="v3.antetitulo"></p>
         <h1 class="titular cifra" id="r-numero"></h1>
 
         <dl class="libro libro--lectura">
-          <div class="fila"><dt>Cliente</dt><dd id="r-cliente"></dd></div>
-          <div class="fila"><dt>Estado</dt><dd id="r-estado"></dd></div>
-          <div class="fila"><dt>Total</dt><dd class="cifra" id="r-total"></dd></div>
-          <div class="fila"><dt>Pendiente</dt><dd class="cifra" id="r-pendiente"></dd></div>
-          <div class="fila"><dt>Vence</dt><dd id="r-vence"></dd></div>
+          <div class="fila"><dt data-i18n="v2.cliente"></dt><dd id="r-cliente"></dd></div>
+          <div class="fila"><dt data-i18n="v3.estado"></dt><dd id="r-estado"></dd></div>
+          <div class="fila"><dt data-i18n="v3.total"></dt><dd class="cifra" id="r-total"></dd></div>
+          <div class="fila"><dt data-i18n="v3.pendiente"></dt><dd class="cifra" id="r-pendiente"></dd></div>
+          <div class="fila"><dt data-i18n="v2.vence"></dt><dd id="r-vence"></dd></div>
         </dl>
 
         <div class="acciones">
-          <a class="boton" id="r-enlace" target="_blank" rel="noopener">Abrir página de pago</a>
-          <button type="button" class="enlace" id="boton-copiar">Copiar enlace</button>
-          <button type="button" class="enlace" id="boton-estado">Consultar estado</button>
-          <a class="enlace" href="#cobros">Ver todos los cobros</a>
-          <button type="button" class="enlace" id="boton-nuevo">Nuevo cobro</button>
+          <a class="boton" id="r-enlace" target="_blank" rel="noopener" data-i18n="v3.abrir"></a>
+          <button type="button" class="enlace" id="boton-copiar" data-i18n="v3.copiar"></button>
+          <button type="button" class="enlace" id="boton-estado" data-i18n="v3.consultar"></button>
+          <a class="enlace" href="#cobros" data-i18n="v3.ver_todos"></a>
+          <button type="button" class="enlace" id="boton-nuevo" data-i18n="v3.nuevo"></button>
         </div>
         <p class="aviso" id="aviso-3" role="status"></p>
       </section>
@@ -131,111 +138,117 @@
     <!-- Pantalla: panel de cobros -->
     <section id="pantalla-cobros" class="pantalla" hidden>
       <div class="panel-cabecera">
-        <h1 class="titular">Cobros</h1>
+        <h1 class="titular" data-i18n="panel.titular"></h1>
         <div class="panel-cabecera__acciones">
           <span class="aviso" id="aviso-panel" role="status"></span>
-          <button type="button" class="enlace" id="boton-actualizar">Actualizar</button>
+          <button type="button" class="enlace" id="boton-actualizar" data-i18n="panel.actualizar"></button>
         </div>
       </div>
 
       <form class="pregunta" id="form-pregunta">
-        <label for="pregunta" class="sr">Pregunta sobre tus cobros</label>
-        <input id="pregunta" class="pregunta__campo" maxlength="300" autocomplete="off"
-          placeholder="Pregunta lo que quieras: ¿quién me debe?">
-        <button type="submit" class="boton" id="boton-preguntar">Preguntar</button>
+        <label for="pregunta" class="sr" data-i18n="panel.pregunta.etiqueta"></label>
+        <input id="pregunta" class="pregunta__campo" maxlength="300" autocomplete="off" data-i18n-placeholder="panel.pregunta.placeholder">
+        <button type="submit" class="boton" id="boton-preguntar" data-i18n="panel.preguntar"></button>
       </form>
       <p class="pregunta__ejemplos">
-        Prueba con
-        <button type="button" class="enlace pregunta-ejemplo">¿Quién me debe?</button>
-        <button type="button" class="enlace pregunta-ejemplo">¿Cuánto entró esta semana?</button>
-        <button type="button" class="enlace pregunta-ejemplo">¿Qué facturas están vencidas?</button>
+        <span data-i18n="panel.prueba"></span>
+        <button type="button" class="enlace pregunta-ejemplo" data-i18n="panel.ejemplo1"></button>
+        <button type="button" class="enlace pregunta-ejemplo" data-i18n="panel.ejemplo2"></button>
+        <button type="button" class="enlace pregunta-ejemplo" data-i18n="panel.ejemplo3"></button>
+        <button type="button" class="enlace pregunta-ejemplo" data-i18n="panel.ejemplo4"></button>
       </p>
 
       <div class="respuesta" id="respuesta" aria-live="polite" hidden>
         <p class="respuesta__texto" id="respuesta-texto"></p>
         <p class="respuesta__meta">
           <span id="respuesta-entendi"></span>
-          <button type="button" class="enlace" id="quitar-respuesta">Mostrar todas las facturas</button>
+          <button type="button" class="enlace" id="quitar-respuesta" data-i18n="panel.mostrar_todas"></button>
         </p>
       </div>
 
       <div class="cifras" id="cifras"></div>
 
       <div class="herramientas">
-        <div class="filtros" role="group" aria-label="Filtrar por estado">
-          <button type="button" class="filtro" data-filtro="todas" aria-pressed="true">Todas <span class="filtro__cuenta"></span></button>
-          <button type="button" class="filtro" data-filtro="abiertas" aria-pressed="false">Por cobrar <span class="filtro__cuenta"></span></button>
-          <button type="button" class="filtro" data-filtro="vencidas" aria-pressed="false">Vencidas <span class="filtro__cuenta"></span></button>
-          <button type="button" class="filtro" data-filtro="pagadas" aria-pressed="false">Pagadas <span class="filtro__cuenta"></span></button>
+        <div class="filtros" role="group" data-i18n-aria-label="filtros.grupo">
+          <button type="button" class="filtro" data-filtro="todas" aria-pressed="true"><span data-i18n="filtros.todas"></span> <span class="filtro__cuenta"></span></button>
+          <button type="button" class="filtro" data-filtro="abiertas" aria-pressed="false"><span data-i18n="filtros.abiertas"></span> <span class="filtro__cuenta"></span></button>
+          <button type="button" class="filtro" data-filtro="vencidas" aria-pressed="false"><span data-i18n="filtros.vencidas"></span> <span class="filtro__cuenta"></span></button>
+          <button type="button" class="filtro" data-filtro="pagadas" aria-pressed="false"><span data-i18n="filtros.pagadas"></span> <span class="filtro__cuenta"></span></button>
         </div>
         <label class="buscar">
-          <span class="sr">Buscar</span>
-          <input id="buscar" type="search" placeholder="Buscar cliente o concepto" autocomplete="off">
+          <span class="sr" data-i18n="panel.buscar"></span>
+          <input id="buscar" type="search" autocomplete="off" data-i18n-placeholder="panel.buscar.placeholder">
         </label>
       </div>
 
       <div id="tabla-cobros" class="tabla"></div>
-      <p class="pista">Pulsa una factura para ver el detalle o redactar un recordatorio.</p>
+      <p class="pista" data-i18n="panel.pista"></p>
     </section>
 
     <!-- Panel lateral: detalle y recordatorio -->
     <div class="velo" id="velo" hidden></div>
     <aside class="detalle" id="detalle" role="dialog" aria-modal="true" aria-labelledby="d-cliente" hidden>
       <div class="detalle__cabecera">
-        <span class="detalle__numero">Factura <span class="cifra" id="d-numero"></span></span>
-        <button type="button" class="enlace" id="d-cerrar">Cerrar</button>
+        <span class="detalle__numero"><span data-i18n="detalle.factura"></span> <span class="cifra" id="d-numero"></span></span>
+        <button type="button" class="enlace" id="d-cerrar" data-i18n="detalle.cerrar"></button>
       </div>
 
       <h2 class="detalle__cliente" id="d-cliente"></h2>
       <p class="detalle__concepto" id="d-concepto"></p>
 
       <dl class="libro libro--compacto">
-        <div class="fila"><dt>Estado</dt><dd id="d-estado"></dd></div>
-        <div class="fila"><dt>Total</dt><dd class="cifra" id="d-total"></dd></div>
-        <div class="fila"><dt>Cobrado</dt><dd class="cifra" id="d-cobrado"></dd></div>
-        <div class="fila"><dt>Pendiente</dt><dd class="cifra" id="d-pendiente"></dd></div>
-        <div class="fila"><dt>Vence</dt><dd id="d-vence"></dd></div>
-        <div class="fila"><dt>Correo</dt><dd id="d-email"></dd></div>
+        <div class="fila"><dt data-i18n="v3.estado"></dt><dd id="d-estado"></dd></div>
+        <div class="fila"><dt data-i18n="v3.total"></dt><dd class="cifra" id="d-total"></dd></div>
+        <div class="fila"><dt data-i18n="detalle.cobrado"></dt><dd class="cifra" id="d-cobrado"></dd></div>
+        <div class="fila"><dt data-i18n="v3.pendiente"></dt><dd class="cifra" id="d-pendiente"></dd></div>
+        <div class="fila"><dt data-i18n="v2.vence"></dt><dd id="d-vence"></dd></div>
+        <div class="fila"><dt data-i18n="detalle.correo"></dt><dd id="d-email"></dd></div>
       </dl>
 
       <p class="detalle__original" id="d-original" hidden>
-        <span class="detalle__etiqueta">Lo pediste así</span>
+        <span class="detalle__etiqueta" data-i18n="detalle.original"></span>
         <span id="d-original-texto"></span>
       </p>
 
-      <p class="detalle__nota" id="d-sin-saldo" hidden>Esta factura no tiene saldo pendiente.</p>
+      <p class="detalle__nota" id="d-sin-saldo" hidden data-i18n="detalle.sin_saldo"></p>
 
       <section class="recordatorio" id="d-recordatorio" aria-labelledby="d-recordatorio-titulo">
-        <h3 class="recordatorio__titulo" id="d-recordatorio-titulo">Recordatorio</h3>
+        <h3 class="recordatorio__titulo" id="d-recordatorio-titulo" data-i18n="detalle.recordatorio"></h3>
 
-        <div class="tonos" role="radiogroup" aria-label="Tono del recordatorio">
-          <button type="button" class="tono" role="radio" data-tono="amable" aria-checked="true">Amable <span class="tono__sugerido">sugerido</span></button>
-          <button type="button" class="tono" role="radio" data-tono="firme" aria-checked="false">Firme <span class="tono__sugerido" hidden>sugerido</span></button>
-          <button type="button" class="tono" role="radio" data-tono="final" aria-checked="false">Último aviso <span class="tono__sugerido" hidden>sugerido</span></button>
+        <div class="tonos" role="radiogroup" data-i18n-aria-label="detalle.tonos">
+          <button type="button" class="tono" role="radio" data-tono="amable" aria-checked="true"><span data-i18n="tono.amable"></span> <span class="tono__sugerido" data-i18n="detalle.sugerido"></span></button>
+          <button type="button" class="tono" role="radio" data-tono="firme" aria-checked="false"><span data-i18n="tono.firme"></span> <span class="tono__sugerido" data-i18n="detalle.sugerido" hidden></span></button>
+          <button type="button" class="tono" role="radio" data-tono="final" aria-checked="false"><span data-i18n="tono.final"></span> <span class="tono__sugerido" data-i18n="detalle.sugerido" hidden></span></button>
         </div>
 
-        <button type="button" class="boton" id="d-redactar">Redactar con IA</button>
+        <p class="idioma-mensaje" role="radiogroup" data-i18n-aria-label="detalle.idioma_mensaje">
+          <span data-i18n="detalle.idioma_mensaje"></span>
+          <button type="button" class="tono" role="radio" data-idioma-mensaje="en" lang="en" aria-checked="true">English</button>
+          <button type="button" class="tono" role="radio" data-idioma-mensaje="es" lang="es" aria-checked="false">Español</button>
+        </p>
+
+        <button type="button" class="boton" id="d-redactar" data-i18n="detalle.redactar"></button>
 
         <div class="borrador" id="d-borrador" hidden>
           <label class="campo">
-            <span class="campo__etiqueta">Asunto</span>
+            <span class="campo__etiqueta" data-i18n="detalle.asunto"></span>
             <input id="d-asunto" autocomplete="off">
           </label>
           <label class="campo">
-            <span class="campo__etiqueta">Mensaje <span class="opcional">puedes editarlo</span></span>
+            <span class="campo__etiqueta"><span data-i18n="detalle.mensaje"></span> <span class="opcional" data-i18n="detalle.editable"></span></span>
             <textarea id="d-mensaje" rows="11"></textarea>
           </label>
           <div class="acciones acciones--compactas">
-            <button type="button" class="boton" id="d-copiar">Copiar mensaje</button>
-            <a class="enlace" id="d-whatsapp" target="_blank" rel="noopener">Abrir en WhatsApp</a>
-            <a class="enlace" id="d-correo" hidden>Enviar por correo</a>
+            <button type="button" class="boton" id="d-copiar" data-i18n="detalle.copiar"></button>
+            <a class="enlace" id="d-whatsapp" target="_blank" rel="noopener" data-i18n="detalle.whatsapp"></a>
+            <a class="enlace" id="d-correo" hidden data-i18n="detalle.enviar_correo"></a>
           </div>
         </div>
 
         <p class="aviso" id="d-aviso" role="status"></p>
 
         <div id="d-historial-bloque" hidden>
-          <h4 class="detalle__etiqueta">Recordatorios enviados</h4>
+          <h4 class="detalle__etiqueta" data-i18n="detalle.historial"></h4>
           <ul class="historial" id="d-historial"></ul>
         </div>
       </section>

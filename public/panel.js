@@ -1,8 +1,9 @@
 // Panel de cobros con AG Grid. Los datos vienen de GET /api/cobros, que los lee
 // de PayPal en cada carga.
 
-import { abrirDetalle, iniciarDetalle } from './detalle.js';
-import { ESTADOS, PAGADAS, el, fechaBreve, fechaRelativa, usd } from './formato.js';
+import { abrirDetalle, iniciarDetalle, retraducirDetalle } from './detalle.js';
+import { PAGADAS, api as llamar, dinero, el, fechaBreve, fechaRelativa, hora, nombreEstado } from './formato.js';
+import { alCambiarIdioma, t } from './i18n.js';
 
 const { createGrid, themeQuartz } = window.agGrid;
 
@@ -53,7 +54,8 @@ const FILTROS = {
 const esTotales = (p) => Boolean(p.node.rowPinned);
 
 function celdaCliente(p) {
-  if (esTotales(p)) return p.valueFormatted;
+  // En la fila fija, AG Grid no siempre pasa valueFormatted en el primer pintado.
+  if (esTotales(p)) return t('facturas', { n: p.data.cuenta });
   const caja = el('div', 'celda-doble');
   caja.append(el('span', 'celda-doble__principal', p.data.cliente), el('span', 'celda-doble__secundaria', p.data.concepto ?? '—'));
   return caja;
@@ -63,10 +65,10 @@ function celdaEstado(p) {
   if (esTotales(p)) return null;
   const f = p.data;
   const caja = el('div', 'celda-doble');
-  let texto = ESTADOS[f.estado] ?? f.estado;
+  let texto = nombreEstado(f.estado);
   let tono = 'abierta';
   if (f.vencida) {
-    texto = f.dias_atraso === 1 ? 'Vencida hace 1 día' : `Vencida hace ${f.dias_atraso} días`;
+    texto = t('vencida_hace', { n: f.dias_atraso });
     tono = 'vencida';
   } else if (PAGADAS.has(f.estado)) {
     tono = 'pagada';
@@ -76,8 +78,8 @@ function celdaEstado(p) {
   const ultimo = f.recordatorios?.at(-1);
   let secundaria = '';
   if (f.pendiente > 0) {
-    if (ultimo) secundaria = `Recordado ${fechaRelativa(ultimo.fecha)}`;
-    else secundaria = f.vista ? 'El cliente la abrió' : 'Sin abrir';
+    if (ultimo) secundaria = t('tabla.recordado', { cuando: fechaRelativa(ultimo.fecha) });
+    else secundaria = t(f.vista ? 'tabla.abierta_por_cliente' : 'tabla.sin_abrir');
   }
   caja.append(el('span', `estado estado--${tono}`, texto), el('span', 'celda-doble__secundaria', secundaria));
   return caja;
@@ -85,56 +87,59 @@ function celdaEstado(p) {
 
 function celdaVence(p) {
   if (esTotales(p)) return null;
-  return el('span', p.data.vencida ? 'texto-vencido' : '', fechaBreve(p.data.vence) ?? 'Al recibir');
+  return el('span', p.data.vencida ? 'texto-vencido' : '', fechaBreve(p.data.vence) ?? t('tabla.al_recibir'));
 }
 
 function celdaEnlace(p) {
   if (esTotales(p) || !p.data.enlace || p.data.pendiente === 0) return null;
-  const a = el('a', 'enlace', 'Pago ↗');
+  const a = el('a', 'enlace', t('tabla.pago'));
   a.href = p.data.enlace;
   a.target = '_blank';
   a.rel = 'noopener';
-  a.title = 'Abrir la página de pago de PayPal';
+  a.title = t('tabla.pago.titulo');
   return a;
 }
 
-const dinero = (p) => (p.value === null || p.value === undefined ? '' : usd.format(p.value));
+const monto = (p) => (p.value === null || p.value === undefined ? '' : dinero(p.value));
 
-// `width` es el ancho preferido; fitGridWidth reparte el espacio real sin bajar de `minWidth`.
-const columnas = [
+// `width` es el ancho preferido; el ajuste reparte el espacio real sin bajar de
+// `minWidth`. Es una función porque los encabezados dependen del idioma.
+const construirColumnas = () => [
   {
     field: 'numero',
-    headerName: 'Factura',
+    headerName: t('col.numero'),
     width: 150,
     minWidth: 130,
     cellClass: 'celda-cifra',
-    valueFormatter: (p) => (esTotales(p) ? 'Total' : p.value),
+    valueFormatter: (p) => (esTotales(p) ? t('tabla.total') : p.value),
   },
   {
     field: 'cliente',
-    headerName: 'Cliente y concepto',
+    headerName: t('col.cliente'),
     width: 280,
     minWidth: 130,
     cellRenderer: celdaCliente,
-    valueFormatter: (p) => (esTotales(p) ? `${p.data.cuenta} ${p.data.cuenta === 1 ? 'factura' : 'facturas'}` : p.value),
+    valueFormatter: (p) => (esTotales(p) ? t('facturas', { n: p.data.cuenta }) : p.value),
     getQuickFilterText: (p) => [p.data.cliente, p.data.concepto, p.data.email, p.data.numero].filter(Boolean).join(' '),
   },
-  { field: 'emitida', headerName: 'Emitida', width: 92, minWidth: 84, valueFormatter: (p) => fechaBreve(p.value) ?? '' },
-  { field: 'vence', headerName: 'Vence', width: 92, minWidth: 84, cellRenderer: celdaVence },
+  { field: 'emitida', headerName: t('col.emitida'), width: 92, minWidth: 84, valueFormatter: (p) => fechaBreve(p.value) ?? '' },
+  { field: 'vence', headerName: t('col.vence'), width: 92, minWidth: 84, cellRenderer: celdaVence },
   {
     field: 'estado',
-    headerName: 'Estado',
+    headerName: t('col.estado'),
     width: 180,
     minWidth: 120,
     cellRenderer: celdaEstado,
     // Ordenar por estado = primero lo más urgente.
     comparator: (_a, _b, nodoA, nodoB) => urgencia(nodoA.data) - urgencia(nodoB.data),
   },
-  { field: 'total', headerName: 'Total', width: 110, minWidth: 96, type: 'rightAligned', cellClass: 'celda-cifra', valueFormatter: dinero },
-  { field: 'cobrado', headerName: 'Cobrado', width: 110, minWidth: 96, type: 'rightAligned', cellClass: 'celda-cifra', valueFormatter: dinero },
-  { field: 'pendiente', headerName: 'Pendiente', width: 110, minWidth: 88, type: 'rightAligned', cellClass: 'celda-cifra celda-pendiente', valueFormatter: dinero },
+  { field: 'total', headerName: t('col.total'), width: 110, minWidth: 96, type: 'rightAligned', cellClass: 'celda-cifra', valueFormatter: monto },
+  { field: 'cobrado', headerName: t('col.cobrado'), width: 110, minWidth: 96, type: 'rightAligned', cellClass: 'celda-cifra', valueFormatter: monto },
+  { field: 'pendiente', headerName: t('col.pendiente'), width: 110, minWidth: 88, type: 'rightAligned', cellClass: 'celda-cifra celda-pendiente', valueFormatter: monto },
   { colId: 'enlace', headerName: '', width: 76, minWidth: 70, sortable: false, cellRenderer: celdaEnlace },
 ];
+
+let columnas = construirColumnas();
 
 function urgencia(f) {
   if (!f) return 99;
@@ -166,17 +171,17 @@ function pintarCifras() {
   const pagadas = filas.filter((f) => f.cobrado > 0);
 
   const cifras = [
-    ['Por cobrar', suma(abiertas, 'pendiente'), abiertas.length, ''],
-    ['Vencido', suma(vencidas, 'pendiente'), vencidas.length, vencidas.length ? 'cifra--alerta' : ''],
-    ['Cobrado', suma(pagadas, 'cobrado'), pagadas.length, ''],
+    [t('cifras.por_cobrar'), suma(abiertas, 'pendiente'), abiertas.length, ''],
+    [t('cifras.vencido'), suma(vencidas, 'pendiente'), vencidas.length, vencidas.length ? 'cifra--alerta' : ''],
+    [t('cifras.cobrado'), suma(pagadas, 'cobrado'), pagadas.length, ''],
   ];
 
   $('#cifras').replaceChildren(...cifras.map(([etiqueta, valor, cuenta, clase]) => {
     const bloque = el('div', `cifra-bloque ${clase}`);
     bloque.append(
       el('span', 'cifra-bloque__etiqueta', etiqueta),
-      el('span', 'cifra-bloque__valor', usd.format(valor)),
-      el('span', 'cifra-bloque__cuenta', cuenta === 1 ? '1 factura' : `${cuenta} facturas`),
+      el('span', 'cifra-bloque__valor', dinero(valor)),
+      el('span', 'cifra-bloque__cuenta', t('facturas', { n: cuenta })),
     );
     return bloque;
   }));
@@ -193,15 +198,13 @@ async function cargar() {
   const boton = $('#boton-actualizar');
   const aviso = $('#aviso-panel');
   boton.disabled = true;
-  aviso.textContent = 'Consultando PayPal…';
+  aviso.textContent = t('panel.consultando');
   try {
-    const res = await fetch('/api/cobros');
-    const datos = await res.json();
-    if (!res.ok) throw new Error(datos.error || 'No se pudo cargar la lista.');
+    const datos = await llamar('GET', '/api/cobros');
     filas = datos.cobros;
     api.setGridOption('rowData', filas);
     pintarCifras();
-    aviso.textContent = `Actualizado desde PayPal · ${new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}`;
+    aviso.textContent = t('panel.actualizado', { hora: hora() });
   } catch (err) {
     aviso.textContent = err.message;
   } finally {
@@ -239,24 +242,16 @@ function ajustarColumnas(ancho) {
   api.sizeColumnsToFit();
 }
 
-/* Preguntas en español */
-
-const NOMBRE_METRICA = {
-  pendiente: 'lo que te deben',
-  cobrado: 'pagos recibidos',
-  facturado: 'monto facturado',
-  cantidad: 'número de facturas',
-};
-const NOMBRE_ESTADO = { abiertas: 'por cobrar', vencidas: 'vencidas', pagadas: 'pagadas' };
+/* Preguntas en lenguaje natural */
 
 // Lo que entendió la IA, en palabras: así se ve que la respuesta no es una caja negra.
 function describirConsulta(datos) {
   const c = datos.consulta;
-  const partes = [NOMBRE_METRICA[c.metrica]];
-  if (NOMBRE_ESTADO[c.estado]) partes.push(`facturas ${NOMBRE_ESTADO[c.estado]}`);
-  if (c.cliente) partes.push(`cliente: ${c.cliente}`);
-  partes.push(datos.periodo?.texto ?? 'todas las fechas');
-  return `Entendí: ${partes.join(' · ')}`;
+  const partes = [t(`metrica.${c.metrica}`)];
+  if (c.estado !== 'todas') partes.push(t(`filtro_estado.${c.estado}`));
+  if (c.cliente) partes.push(t('panel.cliente', { cliente: c.cliente }));
+  partes.push(datos.periodo?.texto ?? t('panel.todas_fechas'));
+  return t('panel.entendi', { partes: partes.join(' · ') });
 }
 
 function marcarFiltro(valor) {
@@ -278,16 +273,10 @@ async function preguntar(texto) {
   const boton = $('#boton-preguntar');
   const caja = $('#respuesta');
   boton.disabled = true;
-  boton.textContent = 'Pensando…';
+  boton.textContent = t('panel.pensando');
   caja.classList.remove('respuesta--error');
   try {
-    const res = await fetch('/api/consultas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pregunta }),
-    });
-    const datos = await res.json();
-    if (!res.ok) throw new Error(datos.error || 'No pude responder esa pregunta.');
+    const datos = await llamar('POST', '/api/consultas', { pregunta });
 
     $('#respuesta-texto').textContent = datos.respuesta;
     const sobreCobros = datos.consulta?.sobre_cobros !== false;
@@ -309,8 +298,22 @@ async function preguntar(texto) {
     caja.hidden = false;
   } finally {
     boton.disabled = false;
-    boton.textContent = 'Preguntar';
+    boton.textContent = t('panel.preguntar');
   }
+}
+
+// Encabezados, celdas, totales y cifras dependen del idioma: se rehacen.
+// La respuesta a la última pregunta se descarta porque venía en el otro idioma.
+function retraducirPanel() {
+  columnas = construirColumnas();
+  api.setGridOption('columnDefs', columnas);
+  ocultasActuales = '';
+  ajustarColumnas($('#tabla-cobros').clientWidth);
+  api.refreshCells({ force: true });
+  actualizarTotales();
+  pintarCifras();
+  if (!$('#respuesta').hidden) quitarRespuesta();
+  retraducirDetalle();
 }
 
 // Tras registrar un recordatorio, la fila se actualiza sin recargar desde PayPal.
@@ -346,12 +349,12 @@ export function iniciarPanel() {
       abrirDetalle(e.data, { onCambio: actualizarFila });
     },
     initialState: { sort: { sortModel: [{ colId: 'estado', sort: 'asc' }] } },
-    overlayNoRowsTemplate: '<span class="tabla-vacia">No hay cobros que mostrar.</span>',
-    localeText: {
-      loadingOoo: 'Cargando…',
-      noRowsToShow: 'No hay cobros que mostrar.',
-      noMatchingRows: 'Ningún cobro coincide con el filtro.',
-    },
+    // Se consulta cada vez que AG Grid muestra un texto propio: sigue al idioma.
+    getLocaleText: ({ key, defaultValue }) => ({
+      loadingOoo: t('tabla.cargando'),
+      noRowsToShow: t('tabla.vacia'),
+      noMatchingRows: t('tabla.sin_coincidencias'),
+    })[key] ?? defaultValue,
   });
 
   for (const boton of document.querySelectorAll('.filtro')) {
@@ -377,6 +380,8 @@ export function iniciarPanel() {
     });
   }
   $('#quitar-respuesta').addEventListener('click', () => quitarRespuesta());
+
+  alCambiarIdioma(retraducirPanel);
 
   return { cargar };
 }

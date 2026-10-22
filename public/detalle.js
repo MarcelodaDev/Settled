@@ -1,15 +1,15 @@
 // Panel lateral de una factura: detalle y recordatorio redactado por la IA.
 // El freelancer revisa y edita el texto, y lo envía por su propio canal.
 
-import { ESTADOS, el, fechaRelativa, formatearFecha, usd } from './formato.js';
+import { api, dinero, el, fechaRelativa, formatearFecha, nombreEstado } from './formato.js';
+import { idiomaActual, t } from './i18n.js';
 
 const $ = (selector) => document.querySelector(selector);
 
-const NOMBRES_TONO = { amable: 'Amable', firme: 'Firme', final: 'Último aviso' };
-const NOMBRES_CANAL = { copiar: 'copiado', whatsapp: 'WhatsApp', correo: 'correo' };
-
 let fila = null;
 let tono = 'amable';
+// El recordatorio lo lee el cliente: su idioma se elige aparte del de la interfaz.
+let idiomaMensaje = idiomaActual();
 let alCambiar = () => {};
 let origenFoco = null;
 
@@ -25,17 +25,23 @@ function aviso(texto) {
 }
 
 function pintarTonos(sugerido) {
-  for (const boton of document.querySelectorAll('.tono')) {
+  for (const boton of document.querySelectorAll('.tono[data-tono]')) {
     const valor = boton.dataset.tono;
     boton.setAttribute('aria-checked', String(valor === tono));
     boton.querySelector('.tono__sugerido').hidden = valor !== sugerido;
   }
 }
 
+function pintarIdiomaMensaje() {
+  for (const boton of document.querySelectorAll('[data-idioma-mensaje]')) {
+    boton.setAttribute('aria-checked', String(boton.dataset.idiomaMensaje === idiomaMensaje));
+  }
+}
+
 function pintarHistorial() {
   const lista = $('#d-historial');
   const items = [...fila.recordatorios].reverse().map((r) =>
-    el('li', null, `${NOMBRES_TONO[r.tono]} · ${NOMBRES_CANAL[r.canal]} · ${fechaRelativa(r.fecha)}`));
+    el('li', null, `${t(`tono.${r.tono}`)} · ${t(`canal.${r.canal}`)} · ${fechaRelativa(r.fecha)}`));
   lista.replaceChildren(...items);
   $('#d-historial-bloque').hidden = items.length === 0;
 }
@@ -51,34 +57,38 @@ function pintarEnlacesEnvio() {
   }
 }
 
-function pintar() {
+// Datos de la factura: se pueden volver a pintar sin tocar el borrador.
+function pintarDatos() {
   $('#d-numero').textContent = fila.numero;
   $('#d-cliente').textContent = fila.cliente;
   $('#d-concepto').textContent = fila.concepto ?? '';
 
-  let estado = ESTADOS[fila.estado] ?? fila.estado;
-  if (fila.vencida) estado = `Vencida hace ${fila.dias_atraso === 1 ? '1 día' : `${fila.dias_atraso} días`}`;
-  $('#d-estado').textContent = estado;
+  $('#d-estado').textContent = fila.vencida ? t('vencida_hace', { n: fila.dias_atraso }) : nombreEstado(fila.estado);
   $('#d-estado').className = fila.vencida ? 'texto-vencido' : '';
-  $('#d-total').textContent = usd.format(fila.total);
-  $('#d-cobrado').textContent = usd.format(fila.cobrado);
-  $('#d-pendiente').textContent = usd.format(fila.pendiente);
-  $('#d-vence').textContent = formatearFecha(fila.vence) ?? 'Al recibirla';
-  $('#d-email').textContent = fila.email ?? 'Sin correo';
+  $('#d-total').textContent = dinero(fila.total);
+  $('#d-cobrado').textContent = dinero(fila.cobrado);
+  $('#d-pendiente').textContent = dinero(fila.pendiente);
+  $('#d-vence').textContent = formatearFecha(fila.vence) ?? t('v3.al_recibir');
+  $('#d-email').textContent = fila.email ?? t('detalle.sin_correo');
 
   $('#d-original').hidden = !fila.texto_original;
-  $('#d-original-texto').textContent = fila.texto_original ? `«${fila.texto_original}»` : '';
+  $('#d-original-texto').textContent = fila.texto_original ? `“${fila.texto_original}”` : '';
 
   const conSaldo = fila.pendiente > 0;
   $('#d-recordatorio').hidden = !conSaldo;
   $('#d-sin-saldo').hidden = conSaldo;
+  pintarHistorial();
+}
 
+function pintar() {
+  pintarDatos();
   $('#d-borrador').hidden = true;
-  $('#d-redactar').textContent = 'Redactar con IA';
+  $('#d-redactar').textContent = t('detalle.redactar');
   aviso('');
   tono = tonoSugerido(fila);
+  idiomaMensaje = idiomaActual();
   pintarTonos(tono);
-  pintarHistorial();
+  pintarIdiomaMensaje();
 }
 
 export function abrirDetalle(datos, { onCambio } = {}) {
@@ -92,6 +102,14 @@ export function abrirDetalle(datos, { onCambio } = {}) {
   $('#d-cerrar').focus();
 }
 
+// Al cambiar el idioma de la interfaz con el panel abierto: se traducen los
+// datos y botones, pero el borrador (ya escrito) se respeta.
+export function retraducirDetalle() {
+  if (!fila || $('#detalle').hidden) return;
+  pintarDatos();
+  $('#d-redactar').textContent = t($('#d-borrador').hidden ? 'detalle.redactar' : 'detalle.redactar_otra');
+}
+
 function cerrar() {
   $('#detalle').hidden = true;
   $('#velo').hidden = true;
@@ -102,25 +120,19 @@ function cerrar() {
 async function redactar() {
   const boton = $('#d-redactar');
   boton.disabled = true;
-  boton.textContent = 'Redactando…';
+  boton.textContent = t('detalle.redactando');
   aviso('');
   try {
-    const res = await fetch(`/api/cobros/${encodeURIComponent(fila.id)}/recordatorio`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tono }),
-    });
-    const datos = await res.json();
-    if (!res.ok) throw new Error(datos.error || 'No se pudo redactar el recordatorio.');
+    const datos = await api('POST', `/api/cobros/${encodeURIComponent(fila.id)}/recordatorio`, { tono, idioma_mensaje: idiomaMensaje });
     $('#d-asunto').value = datos.asunto;
     $('#d-mensaje').value = datos.mensaje;
     pintarTonos(datos.sugerido);
     pintarEnlacesEnvio();
     $('#d-borrador').hidden = false;
-    boton.textContent = 'Redactar otra vez';
+    boton.textContent = t('detalle.redactar_otra');
   } catch (err) {
-    aviso(err.message);
-    boton.textContent = 'Redactar con IA';
+    aviso(err.message || t('detalle.error_redactar'));
+    boton.textContent = t('detalle.redactar');
   } finally {
     boton.disabled = false;
   }
@@ -129,18 +141,12 @@ async function redactar() {
 // Se registra cuando el freelancer usa un canal; el envío lo hace él.
 async function registrar(canal) {
   try {
-    const res = await fetch(`/api/cobros/${encodeURIComponent(fila.id)}/recordatorios`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tono, canal }),
-    });
-    const datos = await res.json();
-    if (!res.ok) throw new Error(datos.error);
+    const datos = await api('POST', `/api/cobros/${encodeURIComponent(fila.id)}/recordatorios`, { tono, canal });
     fila = { ...fila, recordatorios: datos.recordatorios };
     pintarHistorial();
     alCambiar(fila);
   } catch {
-    aviso('El recordatorio no quedó en el historial.');
+    aviso(t('detalle.no_historial'));
   }
 }
 
@@ -151,10 +157,16 @@ export function iniciarDetalle() {
     if (e.key === 'Escape' && !$('#detalle').hidden) cerrar();
   });
 
-  for (const boton of document.querySelectorAll('.tono')) {
+  for (const boton of document.querySelectorAll('.tono[data-tono]')) {
     boton.addEventListener('click', () => {
       tono = boton.dataset.tono;
-      for (const otro of document.querySelectorAll('.tono')) otro.setAttribute('aria-checked', String(otro === boton));
+      for (const otro of document.querySelectorAll('.tono[data-tono]')) otro.setAttribute('aria-checked', String(otro === boton));
+    });
+  }
+  for (const boton of document.querySelectorAll('[data-idioma-mensaje]')) {
+    boton.addEventListener('click', () => {
+      idiomaMensaje = boton.dataset.idiomaMensaje;
+      pintarIdiomaMensaje();
     });
   }
 
@@ -165,10 +177,10 @@ export function iniciarDetalle() {
   $('#d-copiar').addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText($('#d-mensaje').value);
-      aviso('Mensaje copiado. Pégalo donde hables con tu cliente.');
+      aviso(t('detalle.copiado'));
       registrar('copiar');
     } catch {
-      aviso('No se pudo copiar. Selecciona el texto y cópialo a mano.');
+      aviso(t('detalle.no_copiado'));
     }
   });
   $('#d-whatsapp').addEventListener('click', () => registrar('whatsapp'));

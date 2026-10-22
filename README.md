@@ -1,103 +1,109 @@
 # PayFlow
 
-**Cobrador con IA para freelancers.**
+**An AI collections assistant for freelancers, built on PayPal.**
 
-Escribe en español lo que quieres cobrar, por ejemplo *"Cóbrale $300 a Juan por el sitio web, 50% de anticipo"*, y la app:
+Write what you want to bill the way you'd tell an assistant, for example *"Bill Juan $300 for the website, 50% upfront, due in 15 days"*, and PayFlow:
 
-1. Interpreta la instrucción con IA (cliente, monto, concepto, condiciones de pago).
-2. Te muestra la propuesta para que la confirmes. **Nada se crea sin tu confirmación.**
-3. Crea la factura en PayPal (sandbox) con su enlace de pago.
-4. Sigue el estado (enviada, pagada, vencida) en un panel de cobros.
-5. Redacta recordatorios de pago y responde preguntas como "¿quién me debe?".
+1. Interprets the instruction with AI: client, amount, item, deposit and due date.
+2. Shows you the proposal to confirm. **Nothing is created until you approve it.**
+3. Creates the invoice in PayPal (sandbox) with its payment link.
+4. Tracks its status (sent, deposit received, paid, overdue) in an invoices dashboard.
+5. Drafts payment reminders and answers questions like *"Who owes me?"* or *"How much came in this week?"*.
 
-Proyecto para la hackatón *Build What's Next with PayPal and AI*. **Solo usa el sandbox de PayPal: no mueve dinero real.**
+It works in **English and Spanish**: the interface switches with one click, and the AI understands instructions and questions in either language. A freelancer in Latin America can bill a local client in Spanish and an overseas client in English from the same place.
 
-> Estado: en desarrollo. Este README se actualiza a medida que avanza el proyecto.
+Built for the *Build What's Next with PayPal and AI* hackathon. **It only uses the PayPal sandbox: no real money moves.**
 
-## Tecnologías
+> Status: in development. This README is updated as the project moves forward.
+
+## Stack
 
 - **Backend:** Node.js + Express
-- **Frontend:** HTML, CSS y JavaScript, con [AG Grid](https://www.ag-grid.com/) para el panel de cobros
-- **Pagos:** PayPal Invoicing API (sandbox)
-- **IA:** modelos vía [OpenRouter](https://openrouter.ai/) con tool calling
+- **Frontend:** HTML, CSS and JavaScript, with [AG Grid](https://www.ag-grid.com/) for the invoices dashboard
+- **Payments:** PayPal Invoicing API v2 (sandbox)
+- **AI:** models via [OpenRouter](https://openrouter.ai/) with tool calling
 - **Hosting:** Render
 
-## Cómo funciona
+## How it works
 
-1. **Instrucción.** El texto va a `POST /api/cobros/interpretar`. La IA no responde con texto libre: rellena una función `proponer_cobro` con un esquema fijo (tool calling forzado). Tiene prohibido inventar correos, montos o fechas, y lo que falta lo devuelve como advertencias.
-2. **Revisión.** El servidor vuelve a validar la propuesta en código y la interfaz la muestra como formulario editable, con un resumen en una frase de lo que va a pasar. Esta ruta **nunca** toca PayPal.
-3. **Factura.** Al confirmar, `POST /api/cobros` valida otra vez, crea el borrador en la Invoicing API v2, lo envía y devuelve el enlace de pago (`detail.metadata.recipient_view_url`).
-   - El anticipo se implementa como pago parcial con monto mínimo (`configuration.partial_payment`).
-   - Cada propuesta lleva su propio número de factura. Si la confirmación se envía dos veces, PayPal rechaza el número repetido (`DUPLICATE_INVOICE_NUMBER`) y no se crea un duplicado.
-4. **Estado.** `GET /api/cobros/:id` consulta el estado directamente a PayPal, que es la fuente de verdad. `data/cobros.json` solo guarda extras, como el texto original.
-5. **Panel de cobros.** `GET /api/cobros` lista las facturas de la cuenta desde PayPal.
-   - El listado de PayPal no incluye el concepto ni el enlace de pago. Esos datos no cambian, así que se piden una vez por factura y quedan en memoria; el estado y los montos se leen frescos en cada carga.
-   - "Vencida" no es un estado de PayPal: el servidor la calcula como factura abierta con la fecha límite pasada (hora de Ecuador).
+1. **Instruction.** The text goes to `POST /api/cobros/interpretar`. The AI doesn't reply with free text: it fills in a `proponer_cobro` function with a fixed schema (forced tool calling). It's not allowed to invent emails, amounts or dates; whatever is missing comes back as notes for the freelancer.
+2. **Review.** The server validates the proposal again in code, and the interface shows it as an editable form with a one-sentence summary of what will happen. This step **never** touches PayPal.
+3. **Invoice.** On confirmation, `POST /api/cobros` validates once more, creates a draft in the Invoicing API v2, sends it and returns the payment link (`detail.metadata.recipient_view_url`).
+   - The deposit is a partial payment with a minimum amount (`configuration.partial_payment`).
+   - Each proposal carries its own invoice number. If the confirmation is sent twice, PayPal rejects the repeated number (`DUPLICATE_INVOICE_NUMBER`) and no duplicate is created.
+4. **Status.** `GET /api/cobros/:id` reads the status straight from PayPal, the source of truth. `data/cobros.json` only stores extras PayPal doesn't keep, like the original instruction.
+5. **Invoices dashboard.** `GET /api/cobros` lists the account's invoices from PayPal.
+   - PayPal's list endpoint doesn't include the item, the payment link or payment dates. Those come from each invoice's detail, are cached in memory and are only fetched again when the paid amount changes; status and amounts are always fresh.
+   - "Overdue" isn't a PayPal status: the server computes it as an open invoice past its due date (Ecuador time).
+6. **Reminders.** Clicking an invoice opens its details, where the AI drafts a reminder (`POST /api/cobros/:id/recordatorio`).
+   - **The tone is decided by code**, based on how late the payment is: friendly before the due date, firm up to 14 days late, final notice after that. The freelancer can override it.
+   - **The message language is chosen separately** from the interface language, because the client is the one reading it.
+   - The invoice is read **fresh from PayPal** when drafting, so a paid invoice is never chased and amounts are never stale. If the client already paid a deposit, the reminder thanks them and asks only for the balance.
+   - The due-date situation ("due in 15 days", "20 days overdue") is computed by the server and handed to the AI already written, so it can't invent a delay.
+   - The AI writes `{{enlace}}` instead of the URL and the server inserts the real PayPal link on its own line: a model can mangle a long URL.
+   - The freelancer edits the text and sends it through their own channel: copy, WhatsApp or email. Each send is logged in a history (`POST /api/cobros/:id/recordatorios`), something PayPal doesn't record.
+7. **Questions.** In the dashboard you can ask "Who owes me?", "How much came in this week?" or "Which invoices are overdue?", in English or Spanish (`POST /api/consultas`).
+   - **The AI doesn't do math.** It only translates the question into a structured query (`consultar_cobros`): what to measure, which invoices, which client, which period.
+   - **Code computes everything**: periods in Ecuador time (Monday-to-Sunday weeks), totals and per-client grouping. Collected money is summed by each payment's date, so a deposit counts in the week it came in.
+   - **Code also writes the answer** from the computed figures. We tried letting the AI phrase it and, in three tests, it changed the meaning of the data; in a collections product, one wrong figure costs more trust than a more natural sentence is worth.
+   - **The grid filters down to the exact invoices behind the answer**, and a line below shows how the question was understood ("Understood: payments received · this week").
 
-6. **Recordatorios.** Al pulsar una factura del panel se abre su detalle, y ahí la IA redacta un recordatorio (`POST /api/cobros/:id/recordatorio`).
-   - El **tono lo decide el código** según el atraso: amable antes de vencer, firme hasta 14 días de atraso y último aviso a partir de ahí. El freelancer puede cambiarlo.
-   - La factura se lee **fresca de PayPal** al redactar: nunca se recuerda una factura pagada ni un monto desactualizado.
-   - La situación del plazo ("vence en 15 días", "lleva 20 días de atraso") la calcula el servidor y se le da redactada a la IA, para que no pueda inventar atrasos.
-   - La IA escribe `{{enlace}}` en lugar de la URL y el servidor pone el enlace real de PayPal en su propia línea: un modelo puede alterar una URL larga.
-   - El freelancer edita el texto y lo envía por su canal: copiar, WhatsApp o correo. Cada envío queda en el historial (`POST /api/cobros/:id/recordatorios`), un dato que PayPal no guarda.
+## Dashboard with AG Grid
 
-7. **Preguntas en español.** En el panel puedes preguntar "¿quién me debe?", "¿cuánto entró esta semana?" o "¿qué facturas están vencidas?" (`POST /api/consultas`).
-   - **La IA no hace cuentas.** Solo traduce la pregunta a una consulta estructurada (`consultar_cobros`): qué medir, qué facturas, qué cliente, qué periodo.
-   - **El código calcula todo**: periodos en hora de Ecuador (semanas de lunes a domingo), sumas y agrupación por cliente. Lo cobrado se suma por la fecha de cada pago, así que un anticipo cuenta en la semana en que entró.
-   - **La respuesta también la escribe el código** con las cifras calculadas. Probamos que la IA la redactara y en tres pruebas cambió el sentido de los datos; en un producto de cobros, una cifra mal dicha no compensa una frase más natural.
-   - **La tabla se filtra a las facturas que sostienen la respuesta**, y debajo se muestra cómo se entendió la pregunta ("Entendí: pagos recibidos · esta semana").
+The dashboard uses [AG Grid Community](https://www.ag-grid.com/) 36.2.0, served from `node_modules` (pinned version, no CDN).
 
-## Panel con AG Grid
+- **Custom theme** on top of Quartz (`themeQuartz.withParams`): the same paper, ink and hairline rules as the rest of the interface, with no rounded corners or column borders.
+- **Custom cell renderers** built with DOM nodes: client and item on two lines, status toned by urgency ("Overdue by N days", "Opened by client", "Reminded today").
+- **Sort by urgency** with a custom comparator: the most overdue first.
+- **Quick filter** for search and an **external filter** by status (All, Outstanding, Overdue, Paid) and by the invoices behind the last question.
+- **Pinned totals row** that sums only what passes the filters.
+- **Adaptive columns**: based on the grid's real width, secondary columns are hidden by priority instead of forcing horizontal scroll.
+- **Bilingual**: headers, cells, totals and AG Grid's own messages (`getLocaleText`) follow the selected language.
 
-El panel usa [AG Grid Community](https://www.ag-grid.com/) 36.2.0, servido desde `node_modules` (versión fija, sin CDN).
+## AI usage
 
-- **Tema propio** sobre Quartz (`themeQuartz.withParams`): mismo papel, tinta y filetes que el resto de la interfaz, sin bordes redondeados ni bordes de columna.
-- **Celdas personalizadas** con nodos DOM: cliente y concepto en dos líneas, estado con tono según urgencia ("Vencida hace N días", "El cliente la abrió").
-- **Orden por urgencia** con un comparador propio: primero lo más atrasado.
-- **Filtro rápido** para la búsqueda y **filtro externo** por estado (Todas, Por cobrar, Vencidas, Pagadas) y por las facturas de la última pregunta. No se usan los menús de filtro por columna, que AG Grid muestra en inglés.
-- **Fila de totales fija** abajo, que suma solo lo que pasa los filtros.
-- **Columnas adaptables**: según el ancho real de la tabla se ocultan columnas secundarias en orden de prioridad, en lugar de forzar scroll horizontal.
+- **Model:** `anthropic/claude-haiku-5.5` via OpenRouter (configurable with `OPENROUTER_MODEL`).
+- **What for:**
+  - Turning billing instructions, in English or Spanish, into structured invoice data, writing the item as a professional invoice line and flagging missing or ambiguous data (for example, currencies other than USD).
+  - Drafting payment reminders in the tone that fits the delay and in the client's language, using the real invoice data from PayPal.
+  - Understanding questions about the invoices and turning them into a query the server runs.
+- **How:** always with forced tool calling (`proponer_cobro`, `redactar_recordatorio`, `consultar_cobros`), so every reply has a fixed schema the server validates. The AI never computes amounts or dates: code does. Where the model proved unreliable in testing (asking for a client's last name, mixing filters that contradict each other), a small deterministic rule in the server corrects it instead of relying on the prompt.
 
-## Uso de IA
+## Running it locally
 
-- **Modelo:** `anthropic/claude-haiku-5.5` vía OpenRouter (se puede cambiar en `OPENROUTER_MODEL`).
-- **Para qué:**
-  - Convertir instrucciones en español a datos de factura estructurados, normalizar el concepto como línea de factura y señalar datos faltantes o ambiguos (por ejemplo, monedas distintas de USD).
-  - Redactar recordatorios de pago en el tono que corresponde al atraso, con los datos reales de la factura en PayPal.
-  - Entender preguntas en español sobre los cobros y convertirlas en una consulta que el servidor ejecuta.
-- **Cómo:** siempre con tool calling forzado (`proponer_cobro`, `redactar_recordatorio`, `consultar_cobros`), así que la respuesta tiene un esquema fijo que el servidor valida. La IA nunca calcula montos ni fechas: eso lo hace el código.
+Requirements:
 
-## Cómo correrlo localmente
-
-Requisitos:
-
-- Node.js 22.9 o superior
-- Una cuenta developer de PayPal, con las credenciales de sandbox en *Apps & Credentials*
-- Una API key de [OpenRouter](https://openrouter.ai/keys)
+- Node.js 22.9 or later
+- A PayPal developer account, with sandbox credentials under *Apps & Credentials*
+- An [OpenRouter](https://openrouter.ai/keys) API key
 
 ```bash
-cp .env.example .env   # luego rellena las claves
+cp .env.example .env   # then fill in the keys
 npm install
-npm start              # http://localhost:3000  (npm run dev recarga al guardar)
+npm start              # http://localhost:3000  (npm run dev reloads on save)
 ```
 
-Para probar un pago, abre el enlace de la factura **en un navegador normal (Chrome, Firefox…)** e inicia sesión con tu cuenta **Personal** de sandbox (*Testing Tools > Sandbox Accounts* en developer.paypal.com). PayPal abre una ventana emergente para confirmar el pago: si el navegador la bloquea, al pulsar "Pagar" no pasa nada.
+To test a payment, open the invoice link **in a regular browser (Chrome, Firefox…)** and sign in with your **Personal** sandbox account (*Testing Tools > Sandbox Accounts* on developer.paypal.com). PayPal opens a pop-up window to confirm the payment: if the browser blocks it, clicking "Pay" does nothing.
 
-## Desplegar en Render
+## Deploying to Render
 
-El repo incluye un [Blueprint](render.yaml) de Render: un servicio web Node en el plan gratuito, con `npm ci` para construir, `npm start` para arrancar y `/api/salud` como comprobación de salud.
+The repo includes a Render [Blueprint](render.yaml): a Node web service on the free plan, with `npm ci` to build, `npm start` to run and `/api/salud` as the health check.
 
-1. En [dashboard.render.com](https://dashboard.render.com): **New > Blueprint** y elige este repositorio.
-2. Render pide las variables marcadas como secretas: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `OPENROUTER_API_KEY` y `FREELANCER_NOMBRE` (opcional). Nunca se guardan en el repo.
-3. Cada push a `main` vuelve a desplegar la app.
+1. On [dashboard.render.com](https://dashboard.render.com): **New > Blueprint** and pick this repository.
+2. Render asks for the variables marked as secret: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `OPENROUTER_API_KEY` and `FREELANCER_NOMBRE` (optional, used to sign reminders). They are never stored in the repo.
+3. Every push to `main` redeploys the app.
 
-Protecciones de la demo pública:
+Safeguards for the public demo:
 
-- **Solo sandbox:** el servidor no arranca si `PAYPAL_API_BASE` no apunta al sandbox de PayPal.
-- **Límites de uso** por visitante y globales en las rutas que llaman a la IA o crean facturas, para que nadie agote los créditos de la IA.
-- El plan gratuito **se duerme tras 15 minutos sin visitas** y tarda cerca de un minuto en despertar: abre la URL un momento antes de usarla.
-- El disco de Render es efímero: `data/cobros.json` (texto original e historial de recordatorios) se pierde al redesplegar. Las facturas no, porque viven en PayPal.
+- **Sandbox only:** the server refuses to start if `PAYPAL_API_BASE` doesn't point to the PayPal sandbox.
+- **Rate limits** per visitor and globally on the routes that call the AI or create invoices, so nobody can drain the AI credits.
+- The free plan **sleeps after 15 minutes without visits** and takes about a minute to wake up: open the URL shortly before using it.
+- Render's disk is ephemeral: `data/cobros.json` (original instructions and reminder history) is lost on redeploy. Invoices aren't, because they live in PayPal.
 
-## Licencia
+## A note on the code
+
+The code (variable names and comments) is written in Spanish, the author's working language. The product, its interface and this documentation are in English, with Spanish available in the app.
+
+## License
 
 [MIT](LICENSE)

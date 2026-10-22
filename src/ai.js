@@ -4,17 +4,22 @@
 
 const URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+import { nombreIdioma } from './i18n.js';
+
+// `clave` es un mensaje de src/i18n.js: el manejador de errores lo traduce al
+// idioma de quien hizo la petición.
 export class IAError extends Error {
-  constructor(mensaje, causa) {
-    super(mensaje);
+  constructor(clave, causa) {
+    super(clave);
     this.name = 'IAError';
+    this.clave = clave;
     this.causa = causa;
   }
 }
 
 async function llamarHerramienta({ sistema, usuario, herramienta }) {
   const { OPENROUTER_API_KEY: clave, OPENROUTER_MODEL: modelo } = process.env;
-  if (!clave || !modelo) throw new IAError('Faltan OPENROUTER_API_KEY u OPENROUTER_MODEL en el entorno.');
+  if (!clave || !modelo) throw new IAError('ia.config');
 
   const res = await fetch(URL, {
     method: 'POST',
@@ -38,14 +43,14 @@ async function llamarHerramienta({ sistema, usuario, herramienta }) {
   const datos = await res.json().catch(() => ({}));
   if (!res.ok) {
     console.error(`[ia] ${res.status}`, datos?.error?.message ?? '');
-    throw new IAError('La IA no está disponible en este momento.', datos?.error);
+    throw new IAError('ia.no_disponible', datos?.error);
   }
 
   const llamada = datos.choices?.[0]?.message?.tool_calls?.[0];
   try {
     return JSON.parse(llamada.function.arguments);
   } catch {
-    throw new IAError('La IA no devolvió una propuesta legible. Prueba a reformular el cobro.');
+    throw new IAError('ia.ilegible');
   }
 }
 
@@ -59,7 +64,7 @@ const HERRAMIENTA_COBRO = {
       cliente_email: { type: ['string', 'null'], description: 'Correo del cliente, solo si aparece en el texto.' },
       concepto: {
         type: ['string', 'null'],
-        description: 'Qué se cobra, redactado como línea de factura breve y profesional, en español. Ej.: "Diseño y desarrollo de sitio web".',
+        description: 'Qué se cobra, redactado como línea de factura breve y profesional, en el idioma en que está escrita la instrucción. Ej.: "Diseño y desarrollo de sitio web" o "Website design and development".',
       },
       monto: { type: ['number', 'null'], description: 'Monto total en dólares (USD).' },
       anticipo_pct: {
@@ -72,12 +77,12 @@ const HERRAMIENTA_COBRO = {
       },
       nota_cliente: {
         type: ['string', 'null'],
-        description: 'Nota breve y cordial para el cliente en la factura, en español. Solo puede repetir condiciones que el texto dice (p. ej. el anticipo); nunca añadas condiciones nuevas. null si no hay nada que comunicar.',
+        description: 'Nota breve y cordial para el cliente en la factura, en el idioma en que está escrita la instrucción. Solo puede repetir condiciones que el texto dice (p. ej. el anticipo); nunca añadas condiciones nuevas. null si no hay nada que comunicar.',
       },
       advertencias: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Datos que faltan, son ambiguos o no se pueden cumplir, explicados al freelancer en una frase cada uno.',
+        description: 'Datos que faltan, son ambiguos o no se pueden cumplir, explicados al freelancer en una frase cada uno, en el idioma que indica el sistema. Solo para monto, concepto, moneda, correo o fecha: nunca sobre el nombre del cliente (un nombre de pila basta).',
       },
     },
     required: [
@@ -93,10 +98,10 @@ const HERRAMIENTA_RECORDATORIO = {
   parameters: {
     type: 'object',
     properties: {
-      asunto: { type: 'string', description: 'Asunto breve para correo, en español, sin emojis.' },
+      asunto: { type: 'string', description: 'Asunto breve para correo, en el idioma indicado, sin emojis.' },
       mensaje: {
         type: 'string',
-        description: 'Cuerpo del mensaje en español, listo para enviar por correo o WhatsApp. Debe incluir la marca {{enlace}} exactamente una vez donde va el enlace de pago.',
+        description: 'Cuerpo del mensaje en el idioma indicado, listo para enviar por correo o WhatsApp. Debe incluir la marca {{enlace}} exactamente una vez donde va el enlace de pago.',
       },
     },
     required: ['asunto', 'mensaje'],
@@ -104,9 +109,12 @@ const HERRAMIENTA_RECORDATORIO = {
 };
 
 // `datos` sale de la factura leída de PayPal en ese momento, no del navegador.
-export async function redactarRecordatorio(datos, tono, descripcionTono) {
+export async function redactarRecordatorio(datos, tono, descripcionTono, idioma = 'en') {
   const sistema = [
-    'Redactas recordatorios de pago para un freelancer en Ecuador que escribe a sus clientes en español neutro, con tuteo respetuoso.',
+    'Redactas recordatorios de pago para un freelancer que escribe a sus clientes.',
+    idioma === 'es'
+      ? 'Escribe el asunto y el mensaje en español neutro, con tuteo respetuoso.'
+      : 'Escribe el asunto y el mensaje en inglés natural y profesional (no traduzcas literalmente del español).',
     `Tono: ${descripcionTono}`,
     'Reglas:',
     '- Usa solo los datos proporcionados. No inventes montos, fechas, penalizaciones, intereses ni consecuencias.',
@@ -167,25 +175,27 @@ const HERRAMIENTA_CONSULTA = {
 
 export async function interpretarConsulta(pregunta, hoy) {
   const sistema = [
-    'Traduces preguntas en español de un freelancer sobre sus cobros a una consulta estructurada.',
+    'Traduces preguntas de un freelancer sobre sus cobros, en inglés o en español, a una consulta estructurada.',
     `Hoy es ${hoy} (zona horaria America/Guayaquil).`,
     'No calculas ni respondes nada: solo eliges los filtros. Los cálculos los hace el sistema.',
-    'Ejemplos: "¿quién me debe?" → pendiente, todas. "¿cuánto entró esta semana?" → cobrado, esta_semana. "¿qué facturas están atrasadas?" → pendiente, vencidas. "¿cuánto le he cobrado a Juan este mes?" → cobrado, cliente Juan, este_mes.',
+    'Ejemplos: "¿quién me debe?" / "who owes me?" → pendiente, todas. "¿cuánto entró esta semana?" / "how much came in this week?" → cobrado, esta_semana. "¿qué facturas están atrasadas?" / "which invoices are overdue?" → pendiente, vencidas. "how much did Juan pay me this month?" → cobrado, cliente Juan, este_mes.',
   ].join('\n');
   return llamarHerramienta({ sistema, usuario: pregunta, herramienta: HERRAMIENTA_CONSULTA });
 }
 
-export async function interpretarCobro(instruccion, hoy) {
+export async function interpretarCobro(instruccion, hoy, idioma = 'en') {
   const sistema = [
-    'Eres el asistente de cobros de un freelancer en Ecuador. Conviertes su instrucción en los datos de una factura.',
+    'Eres el asistente de cobros de un freelancer. Conviertes su instrucción, escrita en inglés o en español, en los datos de una factura.',
     `Hoy es ${hoy} (zona horaria America/Guayaquil).`,
     'Reglas:',
+    `- Escribe las advertencias en ${nombreIdioma(idioma)}. El concepto y la nota al cliente van en el idioma de la instrucción, porque los lee el cliente.`,
     '- Extrae solo lo que dice el texto. Nunca inventes correos, montos ni fechas; si algo falta, usa null y explícalo en advertencias.',
     '- La única moneda admitida es USD. Si se menciona otra moneda, no conviertas: deja el monto en null y avísalo en advertencias.',
-    '- "Anticipo", "adelanto", "la mitad ahora" o similares indican anticipo_pct (la mitad = 50).',
-    '- Expresiones como "en 15 días" o "para el viernes" se convierten a fecha_vencimiento a partir de hoy.',
+    '- "Anticipo", "adelanto", "la mitad ahora", "upfront", "deposit", "half now" o similares indican anticipo_pct (la mitad = 50).',
+    '- Expresiones como "en 15 días", "para el viernes", "due in 15 days" o "by Friday" se convierten a fecha_vencimiento a partir de hoy.',
     '- El correo es opcional: sin él, el freelancer comparte el enlace de pago por su cuenta. Si falta, menciónalo como opción, no como requisito.',
-    '- El nombre puede ser solo el nombre de pila o una empresa; no pidas apellidos.',
+    '- El concepto lo redactas tú como línea de factura profesional (p. ej. "website" → "Website design and development"); no le pidas al freelancer que lo mejore.',
+    '- El nombre puede ser solo el nombre de pila o una empresa: es suficiente. Nunca añadas advertencias sobre apellidos o nombres incompletos.',
     '- Capitaliza el nombre del cliente correctamente.',
     '- Si el texto no es una instrucción de cobro, deja todo en null y explícalo en advertencias.',
   ].join('\n');

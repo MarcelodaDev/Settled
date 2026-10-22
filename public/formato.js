@@ -1,40 +1,52 @@
-// Formatos y textos compartidos entre el flujo de cobro y el panel.
+// Formatos y utilidades compartidas entre el flujo de cobro y el panel.
+// Montos y fechas siguen el idioma elegido: $1,200.00 en inglés, $1.200,00 en español.
 
-export const usd = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' });
+import { idiomaActual, locale, t } from './i18n.js';
 
-const fechaLarga = new Intl.DateTimeFormat('es-EC', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-const fechaCorta = new Intl.DateTimeFormat('es-EC', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const formatos = new Map();
+
+// Intl es costoso de crear: un formateador por idioma y tipo, reutilizado.
+function formateador(tipo, crear) {
+  const clave = `${tipo}:${locale()}`;
+  if (!formatos.has(clave)) formatos.set(clave, crear(locale()));
+  return formatos.get(clave);
+}
+
+export function dinero(monto) {
+  return formateador('usd', (l) => new Intl.NumberFormat(l, { style: 'currency', currency: 'USD' })).format(monto);
+}
+
+const comoFecha = (iso) => new Date(`${iso}T00:00:00Z`);
 
 export function formatearFecha(iso) {
-  return iso ? fechaLarga.format(new Date(`${iso}T00:00:00Z`)) : null;
+  if (!iso) return null;
+  return formateador('larga', (l) => new Intl.DateTimeFormat(l, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })).format(comoFecha(iso));
 }
 
 export function fechaBreve(iso) {
-  return iso ? fechaCorta.format(new Date(`${iso}T00:00:00Z`)).replace('.', '') : null;
+  if (!iso) return null;
+  return formateador('corta', (l) => new Intl.DateTimeFormat(l, { day: 'numeric', month: 'short', timeZone: 'UTC' }))
+    .format(comoFecha(iso)).replace('.', '');
 }
 
-const relativa = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
+export function hora() {
+  return new Date().toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+}
 
-// "hoy", "ayer", "hace 3 días"…
+export function fechaDeHoy() {
+  return new Intl.DateTimeFormat(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+}
+
+// "today" / "hoy", "yesterday" / "ayer", "3 days ago" / "hace 3 días"…
 export function fechaRelativa(iso) {
   const dias = Math.round((Date.now() - Date.parse(iso)) / (24 * 60 * 60 * 1000));
-  return dias < 1 ? 'hoy' : relativa.format(-dias, 'day');
+  if (dias < 1) return t('hoy');
+  return formateador('relativa', (l) => new Intl.RelativeTimeFormat(l, { numeric: 'auto' })).format(-dias, 'day');
 }
 
-export const ESTADOS = {
-  DRAFT: 'Borrador',
-  SCHEDULED: 'Programada',
-  SENT: 'Enviada, por cobrar',
-  UNPAID: 'Por cobrar',
-  PARTIALLY_PAID: 'Anticipo recibido',
-  PAYMENT_PENDING: 'Pago en proceso',
-  PAID: 'Pagada',
-  MARKED_AS_PAID: 'Pagada (registrada a mano)',
-  CANCELLED: 'Cancelada',
-  AUTO_CANCELLED: 'Cancelada',
-  REFUNDED: 'Reembolsada',
-  PARTIALLY_REFUNDED: 'Reembolso parcial',
-  MARKED_AS_REFUNDED: 'Reembolsada',
+export const nombreEstado = (codigo) => {
+  const texto = t(`estado.${codigo}`);
+  return texto === `estado.${codigo}` ? codigo : texto;
 };
 
 export const PAGADAS = new Set(['PAID', 'MARKED_AS_PAID']);
@@ -44,4 +56,19 @@ export function el(etiqueta, clase, texto) {
   if (clase) nodo.className = clase;
   if (texto !== undefined && texto !== null) nodo.textContent = texto;
   return nodo;
+}
+
+// Todas las llamadas al servidor llevan el idioma, para que errores y
+// respuestas lleguen en el idioma de la interfaz.
+export async function api(metodo, ruta, cuerpo) {
+  const cabeceras = { 'X-Idioma': idiomaActual() };
+  if (cuerpo) cabeceras['Content-Type'] = 'application/json';
+  const res = await fetch(ruta, { method: metodo, headers: cabeceras, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
+  const datos = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const error = new Error(datos.error || t('error.generico'));
+    error.errores = datos.errores;
+    throw error;
+  }
+  return datos;
 }

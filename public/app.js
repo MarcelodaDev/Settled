@@ -2,12 +2,15 @@
 // Todo el texto que viene del servidor o de la IA se pinta con textContent,
 // nunca con innerHTML, para no inyectar HTML.
 
-import { ESTADOS, PAGADAS, formatearFecha, usd } from './formato.js';
+import { PAGADAS, api, dinero, fechaDeHoy, formatearFecha, hora, nombreEstado } from './formato.js';
+import { alCambiarIdioma, cambiarIdioma, t, traducirDocumento } from './i18n.js';
 import { iniciarPanel } from './panel.js';
 
 const $ = (selector) => document.querySelector(selector);
 
 const estado = { texto: '', numero: null, factura: null, cliente: '' };
+
+traducirDocumento();
 
 /* Navegación entre pantallas (#nuevo, #cobros) */
 
@@ -36,25 +39,11 @@ function irA(paso) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-async function api(metodo, ruta, cuerpo) {
-  const res = await fetch(ruta, {
-    method: metodo,
-    headers: cuerpo ? { 'Content-Type': 'application/json' } : {},
-    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
-  });
-  const datos = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const error = new Error(datos.error || 'No se pudo completar la acción.');
-    error.errores = datos.errores;
-    throw error;
-  }
-  return datos;
-}
-
+// Muestra un texto de espera en el botón; con null vuelve a su texto (en el
+// idioma actual, por si cambió mientras tanto).
 function ocupado(boton, texto) {
-  boton.dataset.original ??= boton.textContent;
   boton.disabled = Boolean(texto);
-  boton.textContent = texto || boton.dataset.original;
+  boton.textContent = texto || t(boton.dataset.i18n);
 }
 
 function mostrarErrores(destino, mensajes) {
@@ -81,13 +70,13 @@ $('#form-instruccion').addEventListener('submit', async (e) => {
   const error = $('#error-1');
   error.hidden = true;
   if (!texto) {
-    error.textContent = 'Escribe qué quieres cobrar.';
+    error.textContent = t('v1.vacio');
     error.hidden = false;
     return;
   }
 
   const boton = $('#boton-interpretar');
-  ocupado(boton, 'Interpretando…');
+  ocupado(boton, t('v1.ocupado'));
   try {
     const datos = await api('POST', '/api/cobros/interpretar', { texto });
     estado.texto = texto;
@@ -110,7 +99,7 @@ function rellenarRevision({ cobro, advertencias, errores }) {
   const form = $('#form-cobro');
   for (const campo of CAMPOS) form.elements[campo].value = cobro[campo] ?? '';
 
-  $('#texto-original').textContent = `«${estado.texto}»`;
+  $('#texto-original').textContent = `“${estado.texto}”`;
 
   const notas = $('#lista-notas');
   notas.replaceChildren(...advertencias.map((a) => Object.assign(document.createElement('li'), { textContent: a })));
@@ -124,15 +113,7 @@ function rellenarRevision({ cobro, advertencias, errores }) {
 function leerFormulario() {
   const form = $('#form-cobro');
   const valor = (campo) => form.elements[campo].value.trim() || null;
-  return {
-    cliente_nombre: valor('cliente_nombre'),
-    cliente_email: valor('cliente_email'),
-    concepto: valor('concepto'),
-    monto: valor('monto'),
-    anticipo_pct: valor('anticipo_pct'),
-    fecha_vencimiento: valor('fecha_vencimiento'),
-    nota_cliente: valor('nota_cliente'),
-  };
+  return Object.fromEntries(CAMPOS.map((campo) => [campo, valor(campo)]));
 }
 
 function marcarInvalidos() {
@@ -151,19 +132,19 @@ function actualizarResumen() {
   const resumen = $('#resumen');
 
   if (!c.cliente_nombre || !(monto > 0)) {
-    resumen.textContent = 'Completa el cliente y el monto para ver el resumen.';
+    resumen.textContent = t('v2.incompleto');
     return;
   }
 
   const fuerte = (texto) => Object.assign(document.createElement('strong'), { textContent: texto });
-  const partes = ['Se creará la factura ', fuerte(estado.numero), ' por ', fuerte(usd.format(monto)), ' a nombre de ', fuerte(c.cliente_nombre), '.'];
+  const partes = t('v2.resumen', { numero: fuerte(estado.numero), monto: fuerte(dinero(monto)), cliente: fuerte(c.cliente_nombre) });
 
   const pct = Number(c.anticipo_pct);
   if (pct > 0 && pct < 100) {
-    partes.push(' Podrá pagar un anticipo mínimo de ', fuerte(`${usd.format(Math.round(monto * pct) / 100)} (${pct}%)`), '.');
+    partes.push(...t('v2.resumen.anticipo', { minimo: fuerte(`${dinero(Math.round(monto * pct) / 100)} (${pct}%)`) }));
   }
-  partes.push(c.fecha_vencimiento ? ` Vence el ${formatearFecha(c.fecha_vencimiento)}.` : ' Se paga al recibirla.');
-  partes.push(c.cliente_email ? ` PayPal la enviará a ${c.cliente_email}.` : ' No se enviará por correo: compartirás tú el enlace.');
+  partes.push(c.fecha_vencimiento ? t('v2.resumen.vence', { fecha: formatearFecha(c.fecha_vencimiento) }) : t('v2.resumen.al_recibir'));
+  partes.push(c.cliente_email ? t('v2.resumen.correo', { email: c.cliente_email }) : t('v2.resumen.sin_correo'));
 
   resumen.replaceChildren(...partes);
 }
@@ -181,7 +162,7 @@ $('#boton-volver').addEventListener('click', () => {
 $('#boton-crear').addEventListener('click', async () => {
   const boton = $('#boton-crear');
   mostrarErrores($('#errores-2'), []);
-  ocupado(boton, 'Creando en PayPal…');
+  ocupado(boton, t('v2.creando'));
   try {
     const cobro = leerFormulario();
     const factura = await api('POST', '/api/cobros', { cobro, numero: estado.numero, texto_original: estado.texto });
@@ -203,14 +184,13 @@ function pintarFactura(f) {
   $('#r-cliente').textContent = estado.cliente;
 
   const etiqueta = document.createElement('span');
-  const pagada = PAGADAS.has(f.estado);
-  etiqueta.className = `estado ${pagada ? 'estado--pagada' : 'estado--pendiente'}`;
-  etiqueta.textContent = ESTADOS[f.estado] ?? f.estado;
+  etiqueta.className = `estado ${PAGADAS.has(f.estado) ? 'estado--pagada' : 'estado--pendiente'}`;
+  etiqueta.textContent = nombreEstado(f.estado);
   $('#r-estado').replaceChildren(etiqueta);
 
-  $('#r-total').textContent = f.total ? usd.format(Number(f.total)) : '—';
-  $('#r-pendiente').textContent = f.pendiente ? usd.format(Number(f.pendiente)) : usd.format(0);
-  $('#r-vence').textContent = formatearFecha(f.vence) ?? 'Al recibirla';
+  $('#r-total').textContent = f.total ? dinero(Number(f.total)) : '—';
+  $('#r-pendiente').textContent = dinero(f.pendiente ? Number(f.pendiente) : 0);
+  $('#r-vence').textContent = formatearFecha(f.vence) ?? t('v3.al_recibir');
 
   const enlace = $('#r-enlace');
   enlace.hidden = !f.enlace;
@@ -221,7 +201,7 @@ function pintarFactura(f) {
 $('#boton-copiar').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(estado.factura.enlace);
-    $('#aviso-3').textContent = 'Enlace copiado.';
+    $('#aviso-3').textContent = t('v3.copiado');
   } catch {
     $('#aviso-3').textContent = estado.factura.enlace;
   }
@@ -229,12 +209,12 @@ $('#boton-copiar').addEventListener('click', async () => {
 
 $('#boton-estado').addEventListener('click', async () => {
   const boton = $('#boton-estado');
-  ocupado(boton, 'Consultando…');
+  ocupado(boton, t('v3.consultando'));
   try {
     const factura = await api('GET', `/api/cobros/${encodeURIComponent(estado.factura.id)}`);
     estado.factura = factura;
     pintarFactura(factura);
-    $('#aviso-3').textContent = `Estado consultado a PayPal · ${new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}`;
+    $('#aviso-3').textContent = t('v3.consultado', { hora: hora() });
   } catch (err) {
     $('#aviso-3').textContent = err.message;
   } finally {
@@ -256,8 +236,21 @@ $('.navegacion a[data-pantalla="nuevo"]').addEventListener('click', () => {
   if (!$('#vista-3').hidden) setTimeout(reiniciarFlujo);
 });
 
+/* Idioma */
+
+for (const boton of document.querySelectorAll('[data-idioma]')) {
+  boton.addEventListener('click', () => cambiarIdioma(boton.dataset.idioma));
+}
+
+// Lo ya pintado con textos dinámicos se vuelve a pintar en el idioma nuevo.
+alCambiarIdioma(() => {
+  $('#fecha-hoy').textContent = fechaDeHoy();
+  if (!$('#vista-2').hidden) actualizarResumen();
+  if (!$('#vista-3').hidden && estado.factura) pintarFactura(estado.factura);
+});
+
 /* Inicio */
 
-$('#fecha-hoy').textContent = new Intl.DateTimeFormat('es-EC', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+$('#fecha-hoy').textContent = fechaDeHoy();
 irA(1);
 mostrarPantalla();

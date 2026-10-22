@@ -3,6 +3,7 @@
 // sumas, agrupaciones) lo hace este código, que no se equivoca con la aritmética.
 
 import { esPagada } from './filas.js';
+import { locale } from './i18n.js';
 
 export const METRICAS = ['pendiente', 'cobrado', 'facturado', 'cantidad'];
 export const ESTADOS = ['todas', 'abiertas', 'vencidas', 'pagadas'];
@@ -14,23 +15,26 @@ export const PERIODOS = [
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DIA = 24 * 60 * 60 * 1000;
 
-const usd = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' });
-const fechaCorta = new Intl.DateTimeFormat('es-EC', { day: 'numeric', month: 'long', timeZone: 'UTC' });
-
-export const formatear = (monto) => usd.format(monto);
+export const formatear = (monto, idioma = 'en') =>
+  new Intl.NumberFormat(locale(idioma), { style: 'currency', currency: 'USD' }).format(monto);
 
 /* Fechas: siempre como texto YYYY-MM-DD en hora de Ecuador */
 
 const aFecha = (iso) => new Date(`${iso}T00:00:00Z`);
 const aIso = (fecha) => fecha.toISOString().slice(0, 10);
 const sumarDias = (iso, n) => aIso(new Date(aFecha(iso).getTime() + n * DIA));
-const corta = (iso) => fechaCorta.format(aFecha(iso));
 
-// "del 19 al 25 de octubre" (mismo mes) o "del 28 de octubre al 3 de noviembre".
-function deA(desde, hasta) {
-  return desde.slice(0, 7) === hasta.slice(0, 7)
-    ? `del ${aFecha(desde).getUTCDate()} al ${corta(hasta)}`
-    : `del ${corta(desde)} al ${corta(hasta)}`;
+// "19 de octubre" / "October 19"
+const corta = (iso, idioma) => new Intl.DateTimeFormat(locale(idioma), { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(aFecha(iso));
+
+// es: "del 19 al 25 de octubre" · en: "October 19–25"; con meses distintos,
+// "del 28 de octubre al 3 de noviembre" · "October 28 – November 3".
+function deA(desde, hasta, idioma) {
+  const mismoMes = desde.slice(0, 7) === hasta.slice(0, 7);
+  if (idioma === 'es') {
+    return mismoMes ? `del ${aFecha(desde).getUTCDate()} al ${corta(hasta, idioma)}` : `del ${corta(desde, idioma)} al ${corta(hasta, idioma)}`;
+  }
+  return mismoMes ? `${corta(desde, idioma)}–${aFecha(hasta).getUTCDate()}` : `${corta(desde, idioma)} – ${corta(hasta, idioma)}`;
 }
 
 function lunesDe(iso) {
@@ -42,32 +46,59 @@ function finDeMes(anio, mes) {
   return aIso(new Date(Date.UTC(anio, mes + 1, 0)));
 }
 
+const TEXTO_PERIODO = {
+  es: {
+    hoy: () => 'hoy',
+    ayer: () => 'ayer',
+    esta_semana: (r) => `esta semana (${r})`,
+    semana_pasada: (r) => `la semana pasada (${r})`,
+    este_mes: () => 'este mes',
+    mes_pasado: () => 'el mes pasado',
+    ultimos_7_dias: () => 'en los últimos 7 días',
+    ultimos_30_dias: () => 'en los últimos 30 días',
+    este_anio: (_, anio) => `en ${anio}`,
+    un_dia: (f) => `el ${f}`,
+  },
+  en: {
+    hoy: () => 'today',
+    ayer: () => 'yesterday',
+    esta_semana: (r) => `this week (${r})`,
+    semana_pasada: (r) => `last week (${r})`,
+    este_mes: () => 'this month',
+    mes_pasado: () => 'last month',
+    ultimos_7_dias: () => 'in the last 7 days',
+    ultimos_30_dias: () => 'in the last 30 days',
+    este_anio: (_, anio) => `in ${anio}`,
+    un_dia: (f) => `on ${f}`,
+  },
+};
+
 // Devuelve { desde, hasta, texto } (ambos extremos incluidos).
-export function rangoDe(periodo, hoy, desde, hasta) {
+export function rangoDe(periodo, hoy, desde, hasta, idioma = 'en') {
   const [anio, mes] = hoy.split('-').map(Number);
+  const textos = TEXTO_PERIODO[idioma] ?? TEXTO_PERIODO.en;
+  const con = (d, h, texto) => ({ desde: d, hasta: h, texto });
   switch (periodo) {
-    case 'hoy': return { desde: hoy, hasta: hoy, texto: 'hoy' };
-    case 'ayer': { const d = sumarDias(hoy, -1); return { desde: d, hasta: d, texto: 'ayer' }; }
+    case 'hoy': return con(hoy, hoy, textos.hoy());
+    case 'ayer': { const d = sumarDias(hoy, -1); return con(d, d, textos.ayer()); }
     case 'esta_semana': {
       const l = lunesDe(hoy);
-      return { desde: l, hasta: sumarDias(l, 6), texto: `esta semana (${deA(l, sumarDias(l, 6))})` };
+      return con(l, sumarDias(l, 6), textos.esta_semana(deA(l, sumarDias(l, 6), idioma)));
     }
     case 'semana_pasada': {
       const l = sumarDias(lunesDe(hoy), -7);
-      return { desde: l, hasta: sumarDias(l, 6), texto: `la semana pasada (${deA(l, sumarDias(l, 6))})` };
+      return con(l, sumarDias(l, 6), textos.semana_pasada(deA(l, sumarDias(l, 6), idioma)));
     }
-    case 'este_mes': {
-      const d = `${hoy.slice(0, 7)}-01`;
-      return { desde: d, hasta: finDeMes(anio, mes - 1), texto: 'este mes' };
-    }
-    case 'mes_pasado': {
-      const d = aIso(new Date(Date.UTC(anio, mes - 2, 1)));
-      return { desde: d, hasta: finDeMes(anio, mes - 2), texto: 'el mes pasado' };
-    }
-    case 'ultimos_7_dias': return { desde: sumarDias(hoy, -6), hasta: hoy, texto: 'en los últimos 7 días' };
-    case 'ultimos_30_dias': return { desde: sumarDias(hoy, -29), hasta: hoy, texto: 'en los últimos 30 días' };
-    case 'este_anio': return { desde: `${anio}-01-01`, hasta: `${anio}-12-31`, texto: `en ${anio}` };
-    case 'rango': return { desde, hasta, texto: desde === hasta ? `el ${corta(desde)}` : deA(desde, hasta) };
+    case 'este_mes': return con(`${hoy.slice(0, 7)}-01`, finDeMes(anio, mes - 1), textos.este_mes());
+    case 'mes_pasado': return con(aIso(new Date(Date.UTC(anio, mes - 2, 1))), finDeMes(anio, mes - 2), textos.mes_pasado());
+    case 'ultimos_7_dias': return con(sumarDias(hoy, -6), hoy, textos.ultimos_7_dias());
+    case 'ultimos_30_dias': return con(sumarDias(hoy, -29), hoy, textos.ultimos_30_dias());
+    case 'este_anio': return con(`${anio}-01-01`, `${anio}-12-31`, textos.este_anio(null, anio));
+    case 'rango':
+      if (desde === hasta) return con(desde, hasta, textos.un_dia(corta(desde, idioma)));
+      if (idioma === 'es') return con(desde, hasta, deA(desde, hasta, idioma));
+      // "from September 1 to 30" o "from September 15 to October 10"
+      return con(desde, hasta, `from ${corta(desde, idioma)} to ${desde.slice(0, 7) === hasta.slice(0, 7) ? aFecha(hasta).getUTCDate() : corta(hasta, idioma)}`);
     default: return null;
   }
 }
@@ -134,8 +165,8 @@ function montoDe(fila, consulta, enRango) {
   }
 }
 
-export function ejecutarConsulta(consulta, filas, hoy) {
-  const rango = consulta.periodo ? rangoDe(consulta.periodo, hoy, consulta.desde, consulta.hasta) : null;
+export function ejecutarConsulta(consulta, filas, hoy, idioma = 'en') {
+  const rango = consulta.periodo ? rangoDe(consulta.periodo, hoy, consulta.desde, consulta.hasta, idioma) : null;
   // Sin periodo, todo entra; con periodo, la fecha debe existir y caer dentro.
   const enRango = (fecha) => !rango || (fecha !== null && fecha >= rango.desde && fecha <= rango.hasta);
   const cliente = consulta.cliente ? sinAcentos(consulta.cliente) : null;
@@ -165,44 +196,69 @@ export function ejecutarConsulta(consulta, filas, hoy) {
 
 /* Respuesta: la escribe el código con las cifras calculadas */
 
-const facturas = (n) => (n === 1 ? '1 factura' : `${n} facturas`);
-
-function listaClientes(porCliente) {
-  const partes = porCliente.slice(0, 5).map((g) => `${g.cliente} (${formatear(g.monto)})`);
-  if (porCliente.length > 5) partes.push(`y ${porCliente.length - 5} más`);
+function listaClientes(porCliente, idioma) {
+  const partes = porCliente.slice(0, 5).map((g) => `${g.cliente} (${formatear(g.monto, idioma)})`);
+  if (porCliente.length > 5) partes.push(idioma === 'es' ? `y ${porCliente.length - 5} más` : `and ${porCliente.length - 5} more`);
   return partes.join(', ');
 }
 
-export function redactarRespuesta(consulta, resultado) {
-  const periodo = resultado.rango ? ` ${resultado.rango.texto}` : '';
-  const { total, cantidad, porCliente } = resultado;
+function respuestaEs(consulta, { rango, total, cantidad, porCliente }) {
+  const periodo = rango ? ` ${rango.texto}` : '';
+  const monto = formatear(total, 'es');
+  const lista = listaClientes(porCliente, 'es');
+  const facturas = cantidad === 1 ? '1 factura' : `${cantidad} facturas`;
 
   switch (consulta.metrica) {
     case 'pendiente':
       if (!cantidad) {
         if (consulta.estado === 'vencidas') return `No tienes facturas vencidas${consulta.cliente ? ` de ${consulta.cliente}` : ''}.`;
-        if (resultado.rango) return `No tienes saldos pendientes que venzan${periodo}.`;
+        if (rango) return `No tienes saldos pendientes que venzan${periodo}.`;
         return consulta.cliente ? `${consulta.cliente} no te debe nada.` : 'Nadie te debe nada: no hay saldos pendientes.';
       }
-      if (consulta.estado === 'vencidas') {
-        return `Tienes ${formatear(total)} vencidos en ${facturas(cantidad)}: ${listaClientes(porCliente)}.`;
-      }
-      return `Te deben ${formatear(total)} en ${facturas(cantidad)}${resultado.rango ? ` que vencen${periodo}` : ''}: ${listaClientes(porCliente)}.`;
+      if (consulta.estado === 'vencidas') return `Tienes ${monto} vencidos en ${facturas}: ${lista}.`;
+      return `Te deben ${monto} en ${facturas}${rango ? ` que vencen${periodo}` : ''}: ${lista}.`;
     case 'cobrado':
       if (!cantidad) return `No entró ningún pago${periodo}.`;
-      return `Entraron ${formatear(total)}${periodo}, de ${facturas(cantidad)}: ${listaClientes(porCliente)}.`;
+      return `Entraron ${monto}${periodo}, de ${facturas}: ${lista}.`;
     case 'facturado':
       if (!cantidad) return `No emitiste facturas${periodo}.`;
-      return `Facturaste ${formatear(total)}${periodo} en ${facturas(cantidad)}.`;
+      return `Facturaste ${monto}${periodo} en ${facturas}.`;
     default: {
       const uno = cantidad === 1;
-      const estado = {
-        todas: '',
-        abiertas: ' por cobrar',
-        vencidas: uno ? ' vencida' : ' vencidas',
-        pagadas: uno ? ' pagada' : ' pagadas',
-      }[consulta.estado];
-      return `Tienes ${facturas(cantidad)}${estado}${periodo ? `, ${uno ? 'emitida' : 'emitidas'}${periodo}` : ''}.`;
+      const estado = { todas: '', abiertas: ' por cobrar', vencidas: uno ? ' vencida' : ' vencidas', pagadas: uno ? ' pagada' : ' pagadas' }[consulta.estado];
+      return `Tienes ${facturas}${estado}${periodo ? `, ${uno ? 'emitida' : 'emitidas'}${periodo}` : ''}.`;
     }
   }
+}
+
+function respuestaEn(consulta, { rango, total, cantidad, porCliente }) {
+  const periodo = rango ? ` ${rango.texto}` : '';
+  const monto = formatear(total, 'en');
+  const lista = listaClientes(porCliente, 'en');
+  const sustantivo = cantidad === 1 ? 'invoice' : 'invoices';
+
+  switch (consulta.metrica) {
+    case 'pendiente':
+      if (!cantidad) {
+        if (consulta.estado === 'vencidas') return `You have no overdue invoices${consulta.cliente ? ` from ${consulta.cliente}` : ''}.`;
+        if (rango) return `You have no outstanding balances due${periodo}.`;
+        return consulta.cliente ? `${consulta.cliente} doesn’t owe you anything.` : 'Nobody owes you anything: there are no outstanding balances.';
+      }
+      if (consulta.estado === 'vencidas') return `You have ${monto} overdue across ${cantidad} ${sustantivo}: ${lista}.`;
+      return `You’re owed ${monto} across ${cantidad} ${sustantivo}${rango ? ` due${periodo}` : ''}: ${lista}.`;
+    case 'cobrado':
+      if (!cantidad) return `No payments came in${periodo}.`;
+      return `${monto} came in${periodo}, from ${cantidad} ${sustantivo}: ${lista}.`;
+    case 'facturado':
+      if (!cantidad) return `You didn’t issue any invoices${periodo}.`;
+      return `You invoiced ${monto}${periodo} across ${cantidad} ${sustantivo}.`;
+    default: {
+      const adjetivo = { todas: '', abiertas: 'outstanding ', vencidas: 'overdue ', pagadas: 'paid ' }[consulta.estado];
+      return `You have ${cantidad} ${adjetivo}${sustantivo}${periodo ? `, issued${periodo}` : ''}.`;
+    }
+  }
+}
+
+export function redactarRespuesta(consulta, resultado, idioma = 'en') {
+  return idioma === 'es' ? respuestaEs(consulta, resultado) : respuestaEn(consulta, resultado);
 }

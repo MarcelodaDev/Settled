@@ -1,6 +1,7 @@
 import express from 'express';
 import { IAError } from './src/ai.js';
-import { mensajeParaUsuario, PayPalError } from './src/paypal.js';
+import { idiomaDe, m } from './src/i18n.js';
+import { claveDeError, PayPalError } from './src/paypal.js';
 import cobros from './src/routes/cobros.js';
 import consultas from './src/routes/consultas.js';
 
@@ -37,18 +38,20 @@ app.use('/api/cobros', cobros);
 app.use('/api/consultas', consultas);
 
 // Express 5 pasa aquí los errores de las rutas async sin try/catch en cada una.
+// Los errores se traducen al idioma de quien hizo la petición.
 app.use((error, req, res, next) => {
+  const idioma = idiomaDe(req);
   if (error instanceof PayPalError) {
-    return res.status(502).json({ error: mensajeParaUsuario(error), debug_id: error.debugId });
+    return res.status(502).json({ error: m(idioma, claveDeError(error)), debug_id: error.debugId });
   }
   if (error instanceof IAError) {
-    return res.status(502).json({ error: error.message });
+    return res.status(502).json({ error: m(idioma, error.clave) });
   }
   if (error.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'La petición no es JSON válido.' });
+    return res.status(400).json({ error: m(idioma, 'servidor.json') });
   }
   console.error(error);
-  res.status(500).json({ error: 'Algo salió mal en el servidor.' });
+  res.status(500).json({ error: m(idioma, 'servidor.error') });
 });
 
 const puerto = process.env.PORT || 3000;
