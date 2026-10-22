@@ -37,7 +37,7 @@ router.post('/', limiteIA, async (req, res) => {
     total: resultado.total,
     cantidad: resultado.cantidad,
     por_cliente: resultado.porCliente,
-    ids: resultado.coincidencias.map((c) => c.id),
+    ids: resultado.ids,
   });
 });
 

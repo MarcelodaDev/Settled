@@ -265,6 +265,7 @@ function ajustarColumnas(ancho) {
 function describirConsulta(datos) {
   const c = datos.consulta;
   const partes = [t(`metrica.${c.metrica}`)];
+  if (c.enfoque && c.enfoque !== 'total') partes.push(t(`enfoque.${c.enfoque}`));
   if (c.estado !== 'todas') partes.push(t(`filtro_estado.${c.estado}`));
   if (c.cliente) partes.push(t('panel.cliente', { cliente: c.cliente }));
   partes.push(datos.periodo?.texto ?? t('panel.todas_fechas'));

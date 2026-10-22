@@ -7,6 +7,7 @@ import { locale } from './i18n.js';
 
 export const METRICAS = ['pendiente', 'cobrado', 'facturado', 'cantidad'];
 export const ESTADOS = ['todas', 'abiertas', 'vencidas', 'pagadas'];
+export const ENFOQUES = ['total', 'cliente_principal', 'factura_principal'];
 export const PERIODOS = [
   'hoy', 'ayer', 'esta_semana', 'semana_pasada', 'este_mes', 'mes_pasado',
   'ultimos_7_dias', 'ultimos_30_dias', 'este_anio', 'rango',
@@ -116,7 +117,11 @@ export function normalizarConsulta(entrada = {}) {
     periodo: PERIODOS.includes(entrada.periodo) ? entrada.periodo : null,
     desde: null,
     hasta: null,
+    enfoque: ENFOQUES.includes(entrada.enfoque) ? entrada.enfoque : 'total',
   };
+
+  // "La factura más grande" no tiene sentido cuando se cuentan facturas.
+  if (consulta.metrica === 'cantidad' && consulta.enfoque === 'factura_principal') consulta.enfoque = 'total';
 
   // Combinaciones que no tienen sentido aunque cada filtro sea válido:
   // lo cobrado incluye anticipos de facturas aún abiertas, y lo pendiente
@@ -191,7 +196,30 @@ export function ejecutarConsulta(consulta, filas, hoy, idioma = 'en') {
   }
   const porCliente = [...grupos.values()].sort((a, b) => b.monto - a.monto);
 
-  return { rango, coincidencias, total, cantidad: coincidencias.length, porCliente };
+  const principal = buscarPrincipal(consulta, coincidencias, porCliente);
+  // La tabla muestra lo que sostiene la respuesta: con un "mayor", solo eso.
+  const ids = (principal ? principal.ids : coincidencias.map((c) => c.id));
+
+  return { rango, coincidencias, total, cantidad: coincidencias.length, porCliente, principal, ids };
+}
+
+// "¿Quién me debe más?" / "¿mi factura más grande?": el mayor lo elige el
+// código, no la IA. Si hay empate, entran todos los empatados.
+function buscarPrincipal(consulta, coincidencias, porCliente) {
+  if (consulta.enfoque === 'total' || !coincidencias.length) return null;
+
+  if (consulta.enfoque === 'cliente_principal') {
+    // Al contar facturas, "el que más" es quien tiene más facturas.
+    const valor = (g) => (consulta.metrica === 'cantidad' ? g.facturas : g.monto);
+    const maximo = Math.max(...porCliente.map(valor));
+    const lideres = porCliente.filter((g) => valor(g) === maximo);
+    const nombres = new Set(lideres.map((g) => g.cliente));
+    return { tipo: 'cliente', lideres, unico: porCliente.length === 1, ids: coincidencias.filter((c) => nombres.has(c.cliente)).map((c) => c.id) };
+  }
+
+  const maximo = Math.max(...coincidencias.map((c) => c.monto));
+  const lideres = coincidencias.filter((c) => c.monto === maximo);
+  return { tipo: 'factura', lideres, unico: coincidencias.length === 1, ids: lideres.map((c) => c.id) };
 }
 
 /* Respuesta: la escribe el código con las cifras calculadas */
@@ -200,6 +228,58 @@ function listaClientes(porCliente, idioma) {
   const partes = porCliente.slice(0, 5).map((g) => `${g.cliente} (${formatear(g.monto, idioma)})`);
   if (porCliente.length > 5) partes.push(idioma === 'es' ? `y ${porCliente.length - 5} más` : `and ${porCliente.length - 5} more`);
   return partes.join(', ');
+}
+
+const juntar = (nombres, y) => (nombres.length <= 1 ? nombres.join('') : `${nombres.slice(0, -1).join(', ')} ${y} ${nombres.at(-1)}`);
+
+function principalEs(consulta, { rango, total, principal }) {
+  const periodo = rango ? ` ${rango.texto}` : '';
+  const de = principal.unico ? '' : ` (de ${formatear(total, 'es')} en total)`;
+  if (principal.tipo === 'cliente') {
+    const nombres = juntar(principal.lideres.map((g) => g.cliente), 'y');
+    const varios = principal.lideres.length > 1;
+    const g = principal.lideres[0];
+    const monto = formatear(g.monto, 'es') + (varios ? ' cada uno' : '');
+    switch (consulta.metrica) {
+      case 'pendiente': return principal.unico ? `${nombres} es el único que te debe: ${monto}.` : `${nombres} ${varios ? 'son quienes más te deben' : 'es quien más te debe'}: ${monto}${de}.`;
+      case 'cobrado': return `${nombres} ${varios ? 'son quienes más te pagaron' : 'es quien más te pagó'}${periodo}: ${monto}${de}.`;
+      case 'facturado': return `${varios ? `A ${nombres} es a quienes` : `A ${nombres} es a quien`} más le facturaste${periodo}: ${monto}${de}.`;
+      default: return `${nombres} ${varios ? 'son los clientes' : 'es el cliente'} con más facturas${periodo}: ${g.facturas}.`;
+    }
+  }
+  const f = principal.lideres[0];
+  const mas = principal.lideres.length > 1 ? ` (y ${principal.lideres.length - 1} más con el mismo monto)` : '';
+  const monto = formatear(f.monto, 'es');
+  switch (consulta.metrica) {
+    case 'pendiente': return `La factura con más saldo pendiente${periodo} es ${f.numero}, de ${f.cliente}: ${monto} por cobrar${mas}.`;
+    case 'cobrado': return `El pago más grande${periodo} fue de ${f.cliente}, en la factura ${f.numero}: ${monto}${mas}.`;
+    default: return `Tu factura más grande${periodo} es ${f.numero}, a ${f.cliente}: ${monto}${mas}.`;
+  }
+}
+
+function principalEn(consulta, { rango, total, principal }) {
+  const periodo = rango ? ` ${rango.texto}` : '';
+  const de = principal.unico ? '' : ` (out of ${formatear(total, 'en')} in total)`;
+  if (principal.tipo === 'cliente') {
+    const nombres = juntar(principal.lideres.map((g) => g.cliente), 'and');
+    const varios = principal.lideres.length > 1;
+    const g = principal.lideres[0];
+    const monto = formatear(g.monto, 'en') + (varios ? ' each' : '');
+    switch (consulta.metrica) {
+      case 'pendiente': return principal.unico ? `${nombres} is the only one who owes you: ${monto}.` : `${nombres} ${varios ? 'owe' : 'owes'} you the most: ${monto}${de}.`;
+      case 'cobrado': return `${nombres} paid you the most${periodo}: ${monto}${de}.`;
+      case 'facturado': return `You invoiced ${nombres} the most${periodo}: ${monto}${de}.`;
+      default: return `${nombres} ${varios ? 'have' : 'has'} the most invoices${periodo}: ${g.facturas}.`;
+    }
+  }
+  const f = principal.lideres[0];
+  const mas = principal.lideres.length > 1 ? ` (and ${principal.lideres.length - 1} more with the same amount)` : '';
+  const monto = formatear(f.monto, 'en');
+  switch (consulta.metrica) {
+    case 'pendiente': return `The invoice with the largest balance${periodo} is ${f.numero}, from ${f.cliente}: ${monto} outstanding${mas}.`;
+    case 'cobrado': return `The largest payment${periodo} came from ${f.cliente}, on invoice ${f.numero}: ${monto}${mas}.`;
+    default: return `Your largest invoice${periodo} is ${f.numero}, to ${f.cliente}: ${monto}${mas}.`;
+  }
 }
 
 function respuestaEs(consulta, { rango, total, cantidad, porCliente }) {
@@ -260,5 +340,7 @@ function respuestaEn(consulta, { rango, total, cantidad, porCliente }) {
 }
 
 export function redactarRespuesta(consulta, resultado, idioma = 'en') {
+  // Sin datos, la respuesta "vacía" de siempre ("nadie te debe nada") ya es correcta.
+  if (resultado.principal) return idioma === 'es' ? principalEs(consulta, resultado) : principalEn(consulta, resultado);
   return idioma === 'es' ? respuestaEs(consulta, resultado) : respuestaEn(consulta, resultado);
 }

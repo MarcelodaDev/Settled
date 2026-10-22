@@ -175,8 +175,13 @@ const HERRAMIENTA_CONSULTA = {
       },
       desde: { type: ['string', 'null'], description: 'Solo si periodo es rango: fecha inicial YYYY-MM-DD.' },
       hasta: { type: ['string', 'null'], description: 'Solo si periodo es rango: fecha final YYYY-MM-DD.' },
+      enfoque: {
+        type: 'string',
+        enum: ['total', 'cliente_principal', 'factura_principal'],
+        description: 'total: la suma o la lista. cliente_principal: la pregunta busca el cliente con más ("¿quién me debe más?", "who paid me the most?"). factura_principal: busca la factura más grande ("¿mi factura más grande?").',
+      },
     },
-    required: ['sobre_cobros', 'metrica', 'estado', 'cliente', 'periodo', 'desde', 'hasta'],
+    required: ['sobre_cobros', 'metrica', 'estado', 'cliente', 'periodo', 'desde', 'hasta', 'enfoque'],
   },
 };
 
@@ -185,7 +190,8 @@ export async function interpretarConsulta(pregunta, hoy) {
     'Traduces preguntas de un freelancer sobre sus cobros, en inglés o en español, a una consulta estructurada.',
     `Hoy es ${hoy} (zona horaria America/Guayaquil).`,
     'No calculas ni respondes nada: solo eliges los filtros. Los cálculos los hace el sistema.',
-    'Ejemplos: "¿quién me debe?" / "who owes me?" → pendiente, todas. "¿cuánto entró esta semana?" / "how much came in this week?" → cobrado, esta_semana. "¿qué facturas están atrasadas?" / "which invoices are overdue?" → pendiente, vencidas. "how much did Juan pay me this month?" → cobrado, cliente Juan, este_mes.',
+    'Ejemplos: "¿quién me debe?" / "who owes me?" → pendiente, todas. "¿cuánto entró esta semana?" / "how much came in this week?" → cobrado, esta_semana. "¿qué facturas están atrasadas?" / "which invoices are overdue?" → pendiente, vencidas. "how much did Juan pay me this month?" → cobrado, cliente Juan, este_mes. Si no hay superlativo, enfoque es total.',
+    'Con superlativos, primero elige la métrica por el verbo y luego el enfoque: "¿qué cliente me debe más?" → pendiente, cliente_principal. "who paid me the most this month?" → cobrado, este_mes, cliente_principal. "¿cuál es mi factura más grande?" → facturado, factura_principal. "which overdue invoice is the biggest?" → pendiente, vencidas, factura_principal.',
   ].join('\n');
   return llamarHerramienta({ sistema, usuario: pregunta, herramienta: HERRAMIENTA_CONSULTA });
 }
