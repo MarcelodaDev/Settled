@@ -112,6 +112,45 @@ export async function obtenerFactura(id) {
   return pedir('GET', `/v2/invoicing/invoices/${encodeURIComponent(id)}`);
 }
 
+// El listado de PayPal trae estado y montos, pero no el concepto, el correo
+// ni el enlace de pago. Esos datos no cambian nunca, así que se piden una vez
+// por factura y se guardan en memoria; el estado siempre se lee fresco.
+const fijos = new Map(); // id -> { concepto, email, enlace }
+
+function datosFijos(factura) {
+  return {
+    concepto: factura.items?.map((item) => item.name).join(' · ') || null,
+    email: factura.primary_recipients?.[0]?.billing_info?.email_address ?? null,
+    enlace: factura.detail?.metadata?.recipient_view_url ?? null,
+  };
+}
+
+async function completarFijos(ids) {
+  const faltan = ids.filter((id) => !fijos.has(id));
+  // De 5 en 5 para no saturar la API con decenas de peticiones a la vez.
+  for (let i = 0; i < faltan.length; i += 5) {
+    await Promise.all(faltan.slice(i, i + 5).map(async (id) => {
+      fijos.set(id, datosFijos(await obtenerFactura(id)));
+    }));
+  }
+}
+
+export function recordarFijos(factura) {
+  fijos.set(factura.id, datosFijos(factura));
+}
+
+// Todas las facturas de la cuenta (hasta 500), más recientes primero.
+export async function listarFacturas() {
+  const facturas = [];
+  for (let pagina = 1; pagina <= 5; pagina++) {
+    const datos = await pedir('GET', `/v2/invoicing/invoices?page=${pagina}&page_size=100&total_required=true`);
+    facturas.push(...(datos.items ?? []));
+    if (pagina >= (datos.total_pages ?? 1)) break;
+  }
+  await completarFijos(facturas.map((f) => f.id));
+  return facturas.map((f) => ({ ...f, fijos: fijos.get(f.id) }));
+}
+
 // Crea el borrador, lo envía (así PayPal genera el enlace de pago) y devuelve
 // la factura actualizada.
 export async function crearYEnviar(cobro, numeroFactura) {
@@ -128,7 +167,9 @@ export async function crearYEnviar(cobro, numeroFactura) {
     send_to_invoicer: false,
   });
 
-  return obtenerFactura(id);
+  const factura = await obtenerFactura(id);
+  recordarFijos(factura);
+  return factura;
 }
 
 // Mensaje propio para el usuario: nunca mostramos el `message` crudo de PayPal.

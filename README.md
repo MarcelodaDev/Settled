@@ -28,6 +28,20 @@ Proyecto para la hackatón *Build What's Next with PayPal and AI*. **Solo usa el
    - El anticipo se implementa como pago parcial con monto mínimo (`configuration.partial_payment`).
    - Cada propuesta lleva su propio número de factura. Si la confirmación se envía dos veces, PayPal rechaza el número repetido (`DUPLICATE_INVOICE_NUMBER`) y no se crea un duplicado.
 4. **Estado.** `GET /api/cobros/:id` consulta el estado directamente a PayPal, que es la fuente de verdad. `data/cobros.json` solo guarda extras, como el texto original.
+5. **Panel de cobros.** `GET /api/cobros` lista las facturas de la cuenta desde PayPal.
+   - El listado de PayPal no incluye el concepto ni el enlace de pago. Esos datos no cambian, así que se piden una vez por factura y quedan en memoria; el estado y los montos se leen frescos en cada carga.
+   - "Vencida" no es un estado de PayPal: el servidor la calcula como factura abierta con la fecha límite pasada (hora de Ecuador).
+
+## Panel con AG Grid
+
+El panel usa [AG Grid Community](https://www.ag-grid.com/) 36.2.0, servido desde `node_modules` (versión fija, sin CDN).
+
+- **Tema propio** sobre Quartz (`themeQuartz.withParams`): mismo papel, tinta y filetes que el resto de la interfaz, sin bordes redondeados ni bordes de columna.
+- **Celdas personalizadas** con nodos DOM: cliente y concepto en dos líneas, estado con tono según urgencia ("Vencida hace N días", "El cliente la abrió").
+- **Orden por urgencia** con un comparador propio: primero lo más atrasado.
+- **Filtro rápido** para la búsqueda y **filtro externo** por estado (Todas, Por cobrar, Vencidas, Pagadas). No se usan los menús de filtro por columna, que AG Grid muestra en inglés.
+- **Fila de totales fija** abajo, que suma solo lo que pasa los filtros.
+- **Columnas adaptables**: según el ancho real de la tabla se ocultan columnas secundarias en orden de prioridad, en lugar de forzar scroll horizontal.
 
 ## Uso de IA
 

@@ -2,32 +2,29 @@
 // Todo el texto que viene del servidor o de la IA se pinta con textContent,
 // nunca con innerHTML, para no inyectar HTML.
 
+import { ESTADOS, PAGADAS, formatearFecha, usd } from './formato.js';
+import { iniciarPanel } from './panel.js';
+
 const $ = (selector) => document.querySelector(selector);
-
-const usd = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' });
-const fechaLarga = new Intl.DateTimeFormat('es-EC', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-
-const ESTADOS = {
-  DRAFT: 'Borrador',
-  SCHEDULED: 'Programada',
-  SENT: 'Enviada, por cobrar',
-  UNPAID: 'Por cobrar',
-  PARTIALLY_PAID: 'Anticipo recibido',
-  PAYMENT_PENDING: 'Pago en proceso',
-  PAID: 'Pagada',
-  MARKED_AS_PAID: 'Pagada (registrada a mano)',
-  CANCELLED: 'Cancelada',
-  AUTO_CANCELLED: 'Cancelada',
-  REFUNDED: 'Reembolsada',
-  PARTIALLY_REFUNDED: 'Reembolso parcial',
-  MARKED_AS_REFUNDED: 'Reembolsada',
-};
 
 const estado = { texto: '', numero: null, factura: null, cliente: '' };
 
-function formatearFecha(iso) {
-  return iso ? fechaLarga.format(new Date(`${iso}T00:00:00Z`)) : null;
+/* Navegación entre pantallas (#nuevo, #cobros) */
+
+const panel = iniciarPanel();
+
+function mostrarPantalla() {
+  const pantalla = location.hash === '#cobros' ? 'cobros' : 'nuevo';
+  $('#pantalla-nuevo').hidden = pantalla !== 'nuevo';
+  $('#pantalla-cobros').hidden = pantalla !== 'cobros';
+  for (const a of document.querySelectorAll('.navegacion a')) {
+    if (a.dataset.pantalla === pantalla) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  }
+  if (pantalla === 'cobros') panel.cargar();
 }
+
+window.addEventListener('hashchange', mostrarPantalla);
 
 function irA(paso) {
   for (const n of [1, 2, 3]) {
@@ -206,7 +203,7 @@ function pintarFactura(f) {
   $('#r-cliente').textContent = estado.cliente;
 
   const etiqueta = document.createElement('span');
-  const pagada = ['PAID', 'MARKED_AS_PAID'].includes(f.estado);
+  const pagada = PAGADAS.has(f.estado);
   etiqueta.className = `estado ${pagada ? 'estado--pagada' : 'estado--pendiente'}`;
   etiqueta.textContent = ESTADOS[f.estado] ?? f.estado;
   $('#r-estado').replaceChildren(etiqueta);
@@ -245,14 +242,22 @@ $('#boton-estado').addEventListener('click', async () => {
   }
 });
 
-$('#boton-nuevo').addEventListener('click', () => {
+function reiniciarFlujo() {
   $('#texto').value = '';
   $('#aviso-3').textContent = '';
   irA(1);
   $('#texto').focus();
+}
+
+$('#boton-nuevo').addEventListener('click', reiniciarFlujo);
+
+// "Nuevo cobro" en la cabecera también vuelve al paso 1 si ya se emitió una factura.
+$('.navegacion a[data-pantalla="nuevo"]').addEventListener('click', () => {
+  if (!$('#vista-3').hidden) setTimeout(reiniciarFlujo);
 });
 
 /* Inicio */
 
 $('#fecha-hoy').textContent = new Intl.DateTimeFormat('es-EC', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
 irA(1);
+mostrarPantalla();

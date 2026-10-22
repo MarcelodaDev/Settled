@@ -1,0 +1,271 @@
+// Panel de cobros con AG Grid. Los datos vienen de GET /api/cobros, que los lee
+// de PayPal en cada carga.
+
+import { ESTADOS, PAGADAS, el, fechaBreve, usd } from './formato.js';
+
+const { createGrid, themeQuartz } = window.agGrid;
+
+const $ = (selector) => document.querySelector(selector);
+
+// Tema propio sobre Quartz: mismo papel, tinta y filetes que el resto de la app.
+const tema = themeQuartz.withParams({
+  fontFamily: "'Instrument Sans', system-ui, sans-serif",
+  fontSize: 14,
+  backgroundColor: '#f5f2ea',
+  foregroundColor: '#16140f',
+  chromeBackgroundColor: '#f5f2ea',
+  headerBackgroundColor: '#f5f2ea',
+  headerTextColor: '#6b665c',
+  headerFontSize: 11,
+  headerFontWeight: 500,
+  headerHeight: 44,
+  rowHeight: 60,
+  borderColor: '#d6cfbf',
+  borderRadius: 0,
+  wrapperBorderRadius: 0,
+  wrapperBorder: false,
+  columnBorder: false,
+  headerColumnBorder: false,
+  headerRowBorder: { width: 1, style: 'solid', color: '#16140f' },
+  rowBorder: { width: 1, style: 'solid', color: '#d6cfbf' },
+  oddRowBackgroundColor: '#f5f2ea',
+  rowHoverColor: '#ede8dc',
+  selectedRowBackgroundColor: '#e6dfcf',
+  accentColor: '#16140f',
+  cellHorizontalPadding: 14,
+});
+
+let api = null;
+let filtro = 'todas';
+let filas = [];
+
+const FILTROS = {
+  todas: () => true,
+  abiertas: (f) => f.pendiente > 0,
+  vencidas: (f) => f.vencida,
+  pagadas: (f) => PAGADAS.has(f.estado),
+};
+
+/* Celdas: siempre con nodos DOM y textContent, nunca HTML. */
+
+const esTotales = (p) => Boolean(p.node.rowPinned);
+
+function celdaCliente(p) {
+  if (esTotales(p)) return p.valueFormatted;
+  const caja = el('div', 'celda-doble');
+  caja.append(el('span', 'celda-doble__principal', p.data.cliente), el('span', 'celda-doble__secundaria', p.data.concepto ?? '—'));
+  return caja;
+}
+
+function celdaEstado(p) {
+  if (esTotales(p)) return null;
+  const f = p.data;
+  const caja = el('div', 'celda-doble');
+  let texto = ESTADOS[f.estado] ?? f.estado;
+  let tono = 'abierta';
+  if (f.vencida) {
+    texto = f.dias_atraso === 1 ? 'Vencida hace 1 día' : `Vencida hace ${f.dias_atraso} días`;
+    tono = 'vencida';
+  } else if (PAGADAS.has(f.estado)) {
+    tono = 'pagada';
+  } else if (f.pendiente === 0) {
+    tono = 'cerrada';
+  }
+  const secundaria = f.pendiente > 0 ? (f.vista ? 'El cliente la abrió' : 'Sin abrir') : '';
+  caja.append(el('span', `estado estado--${tono}`, texto), el('span', 'celda-doble__secundaria', secundaria));
+  return caja;
+}
+
+function celdaVence(p) {
+  if (esTotales(p)) return null;
+  return el('span', p.data.vencida ? 'texto-vencido' : '', fechaBreve(p.data.vence) ?? 'Al recibir');
+}
+
+function celdaEnlace(p) {
+  if (esTotales(p) || !p.data.enlace || p.data.pendiente === 0) return null;
+  const a = el('a', 'enlace', 'Pago ↗');
+  a.href = p.data.enlace;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.title = 'Abrir la página de pago de PayPal';
+  return a;
+}
+
+const dinero = (p) => (p.value === null || p.value === undefined ? '' : usd.format(p.value));
+
+// `width` es el ancho preferido; fitGridWidth reparte el espacio real sin bajar de `minWidth`.
+const columnas = [
+  {
+    field: 'numero',
+    headerName: 'Factura',
+    width: 150,
+    minWidth: 130,
+    cellClass: 'celda-cifra',
+    valueFormatter: (p) => (esTotales(p) ? 'Total' : p.value),
+  },
+  {
+    field: 'cliente',
+    headerName: 'Cliente y concepto',
+    width: 280,
+    minWidth: 130,
+    cellRenderer: celdaCliente,
+    valueFormatter: (p) => (esTotales(p) ? `${p.data.cuenta} ${p.data.cuenta === 1 ? 'factura' : 'facturas'}` : p.value),
+    getQuickFilterText: (p) => [p.data.cliente, p.data.concepto, p.data.email, p.data.numero].filter(Boolean).join(' '),
+  },
+  { field: 'emitida', headerName: 'Emitida', width: 92, minWidth: 84, valueFormatter: (p) => fechaBreve(p.value) ?? '' },
+  { field: 'vence', headerName: 'Vence', width: 92, minWidth: 84, cellRenderer: celdaVence },
+  {
+    field: 'estado',
+    headerName: 'Estado',
+    width: 180,
+    minWidth: 120,
+    cellRenderer: celdaEstado,
+    // Ordenar por estado = primero lo más urgente.
+    comparator: (_a, _b, nodoA, nodoB) => urgencia(nodoA.data) - urgencia(nodoB.data),
+  },
+  { field: 'total', headerName: 'Total', width: 110, minWidth: 96, type: 'rightAligned', cellClass: 'celda-cifra', valueFormatter: dinero },
+  { field: 'cobrado', headerName: 'Cobrado', width: 110, minWidth: 96, type: 'rightAligned', cellClass: 'celda-cifra', valueFormatter: dinero },
+  { field: 'pendiente', headerName: 'Pendiente', width: 110, minWidth: 88, type: 'rightAligned', cellClass: 'celda-cifra celda-pendiente', valueFormatter: dinero },
+  { colId: 'enlace', headerName: '', width: 76, minWidth: 70, sortable: false, cellRenderer: celdaEnlace },
+];
+
+function urgencia(f) {
+  if (!f) return 99;
+  if (f.vencida) return -f.dias_atraso; // más atraso, más arriba
+  if (f.pendiente > 0) return 1;
+  if (PAGADAS.has(f.estado)) return 2;
+  return 3;
+}
+
+/* Totales */
+
+// La fila fija de abajo suma solo lo que se ve (filtro y búsqueda aplicados).
+function actualizarTotales() {
+  const suma = { id: 'totales', cuenta: 0, total: 0, cobrado: 0, pendiente: 0 };
+  api.forEachNodeAfterFilter((nodo) => {
+    suma.cuenta += 1;
+    suma.total += nodo.data.total;
+    suma.cobrado += nodo.data.cobrado;
+    suma.pendiente += nodo.data.pendiente;
+  });
+  api.setGridOption('pinnedBottomRowData', suma.cuenta ? [suma] : []);
+}
+
+// Las cifras de cabecera resumen toda la cuenta, sin filtros.
+function pintarCifras() {
+  const suma = (lista, campo) => lista.reduce((t, f) => t + f[campo], 0);
+  const abiertas = filas.filter(FILTROS.abiertas);
+  const vencidas = filas.filter(FILTROS.vencidas);
+  const pagadas = filas.filter((f) => f.cobrado > 0);
+
+  const cifras = [
+    ['Por cobrar', suma(abiertas, 'pendiente'), abiertas.length, ''],
+    ['Vencido', suma(vencidas, 'pendiente'), vencidas.length, vencidas.length ? 'cifra--alerta' : ''],
+    ['Cobrado', suma(pagadas, 'cobrado'), pagadas.length, ''],
+  ];
+
+  $('#cifras').replaceChildren(...cifras.map(([etiqueta, valor, cuenta, clase]) => {
+    const bloque = el('div', `cifra-bloque ${clase}`);
+    bloque.append(
+      el('span', 'cifra-bloque__etiqueta', etiqueta),
+      el('span', 'cifra-bloque__valor', usd.format(valor)),
+      el('span', 'cifra-bloque__cuenta', cuenta === 1 ? '1 factura' : `${cuenta} facturas`),
+    );
+    return bloque;
+  }));
+
+  for (const boton of document.querySelectorAll('.filtro')) {
+    const n = filas.filter(FILTROS[boton.dataset.filtro]).length;
+    boton.querySelector('.filtro__cuenta').textContent = n;
+  }
+}
+
+/* Carga */
+
+async function cargar() {
+  const boton = $('#boton-actualizar');
+  const aviso = $('#aviso-panel');
+  boton.disabled = true;
+  aviso.textContent = 'Consultando PayPal…';
+  try {
+    const res = await fetch('/api/cobros');
+    const datos = await res.json();
+    if (!res.ok) throw new Error(datos.error || 'No se pudo cargar la lista.');
+    filas = datos.cobros;
+    api.setGridOption('rowData', filas);
+    pintarCifras();
+    aviso.textContent = `Actualizado desde PayPal · ${new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}`;
+  } catch (err) {
+    aviso.textContent = err.message;
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+// Si la tabla no cabe, se ocultan columnas secundarias (en este orden) en lugar
+// de forzar scroll horizontal. Se decide con el ancho real de la tabla, no con
+// media queries, para que funcione igual en cualquier contenedor.
+const PRIORIDAD_OCULTAR = ['emitida', 'cobrado', 'total', 'numero', 'vence', 'enlace'];
+const idColumna = (c) => c.colId ?? c.field;
+let ocultasActuales = '';
+
+function columnasOcultas(ancho) {
+  let necesario = columnas.reduce((t, c) => t + c.minWidth, 0);
+  const ocultas = new Set();
+  for (const id of PRIORIDAD_OCULTAR) {
+    if (necesario <= ancho) break;
+    ocultas.add(id);
+    necesario -= columnas.find((c) => idColumna(c) === id).minWidth;
+  }
+  return ocultas;
+}
+
+function ajustarColumnas(ancho) {
+  if (ancho <= 0) return; // pantalla oculta: se ajustará al mostrarse
+  const ocultas = columnasOcultas(ancho);
+  const clave = [...ocultas].join();
+  if (clave !== ocultasActuales) {
+    ocultasActuales = clave;
+    // applyOrder mantiene el orden original al volver a mostrar columnas.
+    api.applyColumnState({ state: columnas.map((c) => ({ colId: idColumna(c), hide: ocultas.has(idColumna(c)) })), applyOrder: true });
+  }
+  api.sizeColumnsToFit();
+}
+
+export function iniciarPanel() {
+  api = createGrid($('#tabla-cobros'), {
+    theme: tema,
+    columnDefs: columnas,
+    defaultColDef: { sortable: true, resizable: false, suppressMovable: true },
+    rowData: [],
+    getRowId: (p) => String(p.data.id ?? 'totales'),
+    domLayout: 'autoHeight',
+    // La tabla nace oculta (ancho 0); se ajusta cuando la pantalla se muestra.
+    onGridSizeChanged: (e) => ajustarColumnas(e.clientWidth),
+    animateRows: true,
+    suppressCellFocus: true,
+    isExternalFilterPresent: () => filtro !== 'todas',
+    doesExternalFilterPass: (nodo) => FILTROS[filtro](nodo.data),
+    onModelUpdated: actualizarTotales,
+    initialState: { sort: { sortModel: [{ colId: 'estado', sort: 'asc' }] } },
+    overlayNoRowsTemplate: '<span class="tabla-vacia">No hay cobros que mostrar.</span>',
+    localeText: {
+      loadingOoo: 'Cargando…',
+      noRowsToShow: 'No hay cobros que mostrar.',
+      noMatchingRows: 'Ningún cobro coincide con el filtro.',
+    },
+  });
+
+  for (const boton of document.querySelectorAll('.filtro')) {
+    boton.addEventListener('click', () => {
+      filtro = boton.dataset.filtro;
+      for (const otro of document.querySelectorAll('.filtro')) otro.setAttribute('aria-pressed', String(otro === boton));
+      api.onFilterChanged();
+    });
+  }
+
+  $('#buscar').addEventListener('input', (e) => api.setGridOption('quickFilterText', e.target.value));
+  $('#boton-actualizar').addEventListener('click', cargar);
+
+  return { cargar };
+}

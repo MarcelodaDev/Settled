@@ -22,6 +22,8 @@ export function leer(id) {
   return leerTodo().then((todo) => todo[id] ?? null);
 }
 
+export const leerTodos = leerTodo;
+
 export function guardar(id, datos) {
   cola = cola.then(async () => {
     const todo = await leerTodo();

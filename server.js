@@ -7,6 +7,8 @@ const app = express();
 
 app.use(express.json({ limit: '20kb' }));
 app.use(express.static('public'));
+// AG Grid se sirve desde node_modules: versión fija en package-lock y sin depender de un CDN en la demo.
+app.use('/vendor', express.static('node_modules/ag-grid-community/dist', { index: false }));
 app.use('/api/cobros', cobros);
 
 // Express 5 pasa aquí los errores de las rutas async sin try/catch en cada una.
