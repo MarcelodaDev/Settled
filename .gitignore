@@ -1,0 +1,16 @@
+# Dependencias
+node_modules/
+
+# Secretos: nunca al repo
+.env
+.env.*
+!.env.example
+
+# Datos locales (extras; PayPal es la fuente de verdad)
+data/*.json
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
