@@ -9,6 +9,9 @@ node_modules/
 # Datos locales (extras; PayPal es la fuente de verdad)
 data/*.json
 
+# Configuración local de Claude Code
+.claude/settings.local.json
+
 # Sistema / editor
 .DS_Store
 Thumbs.db
