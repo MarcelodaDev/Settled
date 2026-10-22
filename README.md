@@ -20,17 +20,35 @@ Proyecto para la hackatón *Build What's Next with PayPal and AI*. **Solo usa el
 - **IA:** modelos vía [OpenRouter](https://openrouter.ai/) con tool calling
 - **Hosting:** Render
 
+## Cómo funciona
+
+1. **Instrucción.** El texto va a `POST /api/cobros/interpretar`. La IA no responde con texto libre: rellena una función `proponer_cobro` con un esquema fijo (tool calling forzado). Tiene prohibido inventar correos, montos o fechas, y lo que falta lo devuelve como advertencias.
+2. **Revisión.** El servidor vuelve a validar la propuesta en código y la interfaz la muestra como formulario editable, con un resumen en una frase de lo que va a pasar. Esta ruta **nunca** toca PayPal.
+3. **Factura.** Al confirmar, `POST /api/cobros` valida otra vez, crea el borrador en la Invoicing API v2, lo envía y devuelve el enlace de pago (`detail.metadata.recipient_view_url`).
+   - El anticipo se implementa como pago parcial con monto mínimo (`configuration.partial_payment`).
+   - Cada propuesta lleva su propio número de factura. Si la confirmación se envía dos veces, PayPal rechaza el número repetido (`DUPLICATE_INVOICE_NUMBER`) y no se crea un duplicado.
+4. **Estado.** `GET /api/cobros/:id` consulta el estado directamente a PayPal, que es la fuente de verdad. `data/cobros.json` solo guarda extras, como el texto original.
+
+## Uso de IA
+
+- **Modelo:** `anthropic/claude-haiku-5.5` vía OpenRouter (se puede cambiar en `OPENROUTER_MODEL`).
+- **Para qué:** convertir instrucciones en español a datos de factura estructurados, normalizar el concepto como línea de factura y señalar datos faltantes o ambiguos (por ejemplo, monedas distintas de USD).
+
 ## Cómo correrlo localmente
 
-Requisitos: Node.js 20 o superior, una cuenta developer de PayPal y una API key de OpenRouter.
+Requisitos:
+
+- Node.js 22.9 o superior
+- Una cuenta developer de PayPal, con las credenciales de sandbox en *Apps & Credentials*
+- Una API key de [OpenRouter](https://openrouter.ai/keys)
 
 ```bash
 cp .env.example .env   # luego rellena las claves
 npm install
-npm start
+npm start              # http://localhost:3000  (npm run dev recarga al guardar)
 ```
 
-*(Los comandos `npm` estarán disponibles cuando se agregue el servidor.)*
+Para probar un pago, abre el enlace de la factura e inicia sesión con tu cuenta **Personal** de sandbox (*Testing Tools > Sandbox Accounts* en developer.paypal.com).
 
 ## Licencia
 

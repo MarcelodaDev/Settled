@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cobrador</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="cabecera">
+    <div class="cabecera__marca">Cobrador</div>
+    <div class="cabecera__meta">
+      <span id="fecha-hoy"></span>
+      <span class="sandbox">PayPal sandbox</span>
+    </div>
+  </header>
+
+  <main class="pagina">
+    <ol class="pasos" aria-label="Pasos">
+      <li class="paso" data-paso="1"><span class="paso__num">01</span>Instrucción</li>
+      <li class="paso" data-paso="2"><span class="paso__num">02</span>Revisión</li>
+      <li class="paso" data-paso="3"><span class="paso__num">03</span>Factura</li>
+    </ol>
+
+    <!-- 01 · Instrucción -->
+    <section id="vista-1" class="vista">
+      <h1 class="titular">¿Qué hay que cobrar?</h1>
+      <p class="entradilla">Escríbelo como se lo dirías a un asistente. Nada se crea en PayPal hasta que lo revises.</p>
+
+      <form id="form-instruccion">
+        <label for="texto" class="sr">Instrucción de cobro</label>
+        <textarea id="texto" class="instruccion" rows="3" maxlength="1000"
+          placeholder="Cóbrale $300 a Juan por el sitio web, 50% de anticipo, que pague en 15 días"></textarea>
+        <div class="acciones">
+          <button type="submit" class="boton" id="boton-interpretar">Interpretar</button>
+          <span class="ejemplos">
+            Ejemplos:
+            <button type="button" class="enlace ejemplo">Cóbrale $300 a Juan por el sitio web, 50% de anticipo, que pague en 15 días</button>
+            <button type="button" class="enlace ejemplo">Factura de $1.200 a Estudio Ruiz (ana@estudioruiz.ec) por el rediseño de marca, vence el 30 de noviembre</button>
+          </span>
+        </div>
+      </form>
+      <p class="error" id="error-1" role="alert" hidden></p>
+    </section>
+
+    <!-- 02 · Revisión -->
+    <section id="vista-2" class="vista" hidden>
+      <h1 class="titular">Revisa antes de crear</h1>
+      <p class="cita" id="texto-original"></p>
+
+      <div class="revision">
+        <form id="form-cobro" class="libro" novalidate>
+          <div class="fila">
+            <label for="f-nombre">Cliente</label>
+            <input id="f-nombre" name="cliente_nombre" autocomplete="off" required>
+          </div>
+          <div class="fila">
+            <label for="f-email">Correo <span class="opcional">opcional</span></label>
+            <input id="f-email" name="cliente_email" type="email" autocomplete="off" placeholder="Sin correo, compartes tú el enlace">
+          </div>
+          <div class="fila">
+            <label for="f-concepto">Concepto</label>
+            <input id="f-concepto" name="concepto" autocomplete="off" required>
+          </div>
+          <div class="fila">
+            <label for="f-monto">Monto <span class="opcional">USD</span></label>
+            <input id="f-monto" name="monto" class="cifra" inputmode="decimal" required>
+          </div>
+          <div class="fila">
+            <label for="f-anticipo">Anticipo <span class="opcional">%</span></label>
+            <input id="f-anticipo" name="anticipo_pct" class="cifra" inputmode="numeric" placeholder="Sin anticipo">
+          </div>
+          <div class="fila">
+            <label for="f-vence">Vence</label>
+            <input id="f-vence" name="fecha_vencimiento" type="date" class="cifra">
+          </div>
+          <div class="fila">
+            <label for="f-nota">Nota al cliente</label>
+            <textarea id="f-nota" name="nota_cliente" rows="2"></textarea>
+          </div>
+        </form>
+
+        <aside class="margen" id="notas-ia" hidden>
+          <h2 class="margen__titulo">Notas de la IA</h2>
+          <ul id="lista-notas"></ul>
+        </aside>
+      </div>
+
+      <p class="resumen" id="resumen"></p>
+      <ul class="error" id="errores-2" role="alert" hidden></ul>
+
+      <div class="acciones">
+        <button type="button" class="boton" id="boton-crear">Crear factura en PayPal</button>
+        <button type="button" class="enlace" id="boton-volver">Volver a escribir</button>
+      </div>
+    </section>
+
+    <!-- 03 · Factura -->
+    <section id="vista-3" class="vista" hidden>
+      <p class="antetitulo">Factura emitida</p>
+      <h1 class="titular cifra" id="r-numero"></h1>
+
+      <dl class="libro libro--lectura">
+        <div class="fila"><dt>Cliente</dt><dd id="r-cliente"></dd></div>
+        <div class="fila"><dt>Estado</dt><dd id="r-estado"></dd></div>
+        <div class="fila"><dt>Total</dt><dd class="cifra" id="r-total"></dd></div>
+        <div class="fila"><dt>Pendiente</dt><dd class="cifra" id="r-pendiente"></dd></div>
+        <div class="fila"><dt>Vence</dt><dd id="r-vence"></dd></div>
+      </dl>
+
+      <div class="acciones">
+        <a class="boton" id="r-enlace" target="_blank" rel="noopener">Abrir página de pago</a>
+        <button type="button" class="enlace" id="boton-copiar">Copiar enlace</button>
+        <button type="button" class="enlace" id="boton-estado">Consultar estado</button>
+        <button type="button" class="enlace" id="boton-nuevo">Nuevo cobro</button>
+      </div>
+      <p class="aviso" id="aviso-3" role="status"></p>
+    </section>
+  </main>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

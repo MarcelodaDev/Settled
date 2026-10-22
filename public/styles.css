@@ -1,0 +1,306 @@
+/* Estilo editorial: cantos rectos, filetes finos, jerarquía por tipografía. */
+
+:root {
+  --papel: #f5f2ea;
+  --tinta: #16140f;
+  --gris: #6b665c;
+  --filete: #d6cfbf;
+  --acento: #a8321f;
+  --ok: #2f5d3a;
+
+  --serif: 'Newsreader', Georgia, serif;
+  --sans: 'Instrument Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --ancho: 880px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--papel);
+  color: var(--tinta);
+  font: 16px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] { display: none !important; }
+
+.sr {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* Cabecera */
+
+.cabecera {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 28px 16px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 2px solid var(--tinta);
+}
+
+.cabecera__marca {
+  font: italic 500 26px/1 var(--serif);
+  letter-spacing: -0.01em;
+}
+
+.cabecera__meta {
+  display: flex;
+  gap: 18px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gris);
+}
+
+.sandbox { color: var(--acento); }
+
+/* Página y pasos */
+
+.pagina {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 0 16px 96px;
+}
+
+.pasos {
+  list-style: none;
+  margin: 0 0 56px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--filete);
+}
+
+.paso {
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--gris);
+  border-top: 3px solid transparent;
+  margin-top: -1px;
+}
+
+.paso__num {
+  font-family: var(--mono);
+  margin-right: 10px;
+}
+
+.paso.activo { color: var(--tinta); border-top-color: var(--tinta); }
+.paso.hecho { color: var(--tinta); }
+
+/* Tipografía */
+
+.titular {
+  margin: 0 0 12px;
+  font: 400 clamp(36px, 6vw, 56px)/1.05 var(--serif);
+  letter-spacing: -0.02em;
+}
+
+.antetitulo {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+
+.entradilla {
+  margin: 0 0 40px;
+  max-width: 34em;
+  color: var(--gris);
+  font-size: 17px;
+}
+
+.cita {
+  margin: 0 0 40px;
+  padding-left: 16px;
+  border-left: 1px solid var(--tinta);
+  font: italic 20px/1.4 var(--serif);
+  color: var(--gris);
+}
+
+.cifra { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Instrucción */
+
+.instruccion {
+  width: 100%;
+  padding: 0 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--tinta);
+  background: transparent;
+  color: var(--tinta);
+  font: 400 clamp(22px, 3.4vw, 30px)/1.3 var(--serif);
+  resize: vertical;
+}
+
+.instruccion::placeholder { color: #b3ac9c; }
+.instruccion:focus { outline: none; border-bottom-width: 2px; padding-bottom: 11px; }
+
+/* Botones */
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 14px 24px;
+  margin-top: 28px;
+}
+
+.boton {
+  display: inline-block;
+  padding: 13px 22px;
+  border: 1px solid var(--tinta);
+  border-radius: 0;
+  background: var(--tinta);
+  color: var(--papel);
+  font: 500 15px/1 var(--sans);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.boton:hover { background: var(--papel); color: var(--tinta); }
+.boton:focus-visible, .enlace:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
+.boton[disabled] { opacity: 0.45; cursor: progress; }
+
+.enlace {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tinta);
+  font: inherit;
+  font-size: 15px;
+  text-decoration: underline;
+  text-decoration-color: var(--filete);
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.enlace:hover { text-decoration-color: var(--tinta); }
+
+.ejemplos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 320px;
+  font-size: 13px;
+  color: var(--gris);
+}
+
+.ejemplo {
+  text-align: left;
+  font: italic 15px/1.35 var(--serif);
+  color: var(--gris);
+}
+
+/* Libro: filas etiqueta / valor separadas por filetes */
+
+.revision {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 40px;
+  align-items: start;
+}
+
+.libro { border-top: 1px solid var(--tinta); margin: 0; }
+
+.fila {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 16px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--filete);
+}
+
+.fila label, .fila dt {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gris);
+}
+
+.opcional { text-transform: none; letter-spacing: 0; color: #a39c8c; margin-left: 4px; }
+
+.fila input, .fila textarea {
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--tinta);
+  font: 400 18px/1.4 var(--serif);
+}
+
+.fila input.cifra { font: 400 16px/1.4 var(--mono); }
+.fila textarea { resize: vertical; }
+.fila input::placeholder, .fila textarea::placeholder { color: #b3ac9c; font-style: italic; }
+.fila input:focus, .fila textarea:focus { outline: none; border-bottom-color: var(--tinta); }
+.fila input[aria-invalid="true"] { border-bottom-color: var(--acento); }
+
+.fila dd { margin: 0; font: 400 18px/1.4 var(--serif); }
+.fila dd.cifra { font: 400 16px/1.4 var(--mono); }
+
+/* Notas al margen */
+
+.margen {
+  padding-left: 16px;
+  border-left: 1px solid var(--acento);
+}
+
+.margen__titulo {
+  margin: 0 0 10px;
+  font: 500 12px/1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--acento);
+}
+
+.margen ul { margin: 0; padding: 0; list-style: none; }
+
+.margen li {
+  margin-bottom: 12px;
+  font: italic 15px/1.4 var(--serif);
+  color: var(--gris);
+}
+
+/* Resumen, errores y avisos */
+
+.resumen {
+  margin: 36px 0 0;
+  max-width: 36em;
+  font: 400 21px/1.45 var(--serif);
+}
+
+.resumen strong { font-weight: 500; }
+
+.error {
+  margin: 20px 0 0;
+  padding: 0 0 0 16px;
+  border-left: 2px solid var(--acento);
+  color: var(--acento);
+  list-style: none;
+  font-size: 15px;
+}
+
+.aviso { min-height: 1.5em; margin: 16px 0 0; color: var(--gris); font-size: 14px; }
+
+.estado { font-family: var(--sans); font-size: 15px; font-weight: 500; }
+.estado--pagada { color: var(--ok); }
+.estado--pendiente { color: var(--acento); }
+
+/* Móvil */
+
+@media (max-width: 720px) {
+  .revision { grid-template-columns: 1fr; gap: 28px; }
+  .fila { grid-template-columns: 1fr; gap: 4px; }
+  .pasos { margin-bottom: 36px; }
+  .paso__num { display: block; margin: 0 0 2px; }
+  .cabecera__meta #fecha-hoy { display: none; }
+}
