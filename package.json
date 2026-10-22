@@ -1,7 +1,7 @@
 {
-  "name": "payflow",
+  "name": "settled",
   "version": "0.1.0",
-  "description": "PayFlow, cobrador con IA para freelancers: lenguaje natural a facturas de PayPal (sandbox).",
+  "description": "Settled: an AI collections assistant for freelancers, built on PayPal Invoicing (sandbox).",
   "main": "server.js",
   "type": "module",
   "scripts": {

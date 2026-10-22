@@ -349,7 +349,7 @@ const TEXTOS = {
 };
 
 export const IDIOMAS = ['en', 'es'];
-const CLAVE_GUARDADA = 'payflow.idioma';
+const CLAVE_GUARDADA = 'settled.idioma';
 
 function leerGuardado() {
   try {

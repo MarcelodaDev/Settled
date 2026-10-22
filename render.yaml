@@ -4,7 +4,7 @@
 
 services:
   - type: web
-    name: payflow
+    name: settled
     runtime: node
     plan: free
     # Virginia es la región de Render más cercana a Ecuador.

@@ -1,8 +1,8 @@
-# PayFlow
+# Settled
 
-**An AI collections assistant for freelancers, built on PayPal.**
+**Every invoice, settled.** An AI collections assistant for freelancers, built on PayPal.
 
-Write what you want to bill the way you'd tell an assistant, for example *"Bill Juan $300 for the website, 50% upfront, due in 15 days"*, and PayFlow:
+Write what you want to bill the way you'd tell an assistant, for example *"Bill Juan $300 for the website, 50% upfront, due in 15 days"*, and Settled:
 
 1. Interprets the instruction with AI: client, amount, item, deposit and due date.
 2. Shows you the proposal to confirm. **Nothing is created until you approve it.**
