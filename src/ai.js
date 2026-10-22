@@ -49,8 +49,8 @@ async function llamarHerramienta({ sistema, usuario, herramienta }) {
   const datos = await res.json().catch(() => ({}));
   if (!res.ok) {
     console.error(`[ia] ${res.status}`, datos?.error?.message ?? '');
-    // 429: se agotó la cuota (los modelos gratuitos tienen un tope diario).
-    throw new IAError(res.status === 429 ? 'ia.cuota' : 'ia.no_disponible', datos?.error);
+    // 402: se alcanzó el límite de gasto de la clave; 429: cuota o ritmo excedidos.
+    throw new IAError(res.status === 402 || res.status === 429 ? 'ia.cuota' : 'ia.no_disponible', datos?.error);
   }
 
   const llamada = datos.choices?.[0]?.message?.tool_calls?.[0];

@@ -39,11 +39,12 @@ export function limitar({ porVisitante, global, clave }) {
   };
 }
 
-// El modelo gratuito de OpenRouter admite 50 peticiones al día en total: la app
-// corta en 45 para responder con un mensaje propio antes de que lo haga OpenRouter.
+// Tope diario de llamadas a la IA para toda la demo: acota el gasto aunque
+// alguien la use a propósito (300 × ~$0,0003 con Haiku ≈ $0,09 al día). El límite
+// de gasto de la clave en OpenRouter es la segunda barrera.
 export const limiteIA = limitar({
   porVisitante: { ventanaMs: 10 * MINUTO, maximo: 30 },
-  global: { ventanaMs: 24 * 60 * MINUTO, maximo: Number(process.env.LIMITE_IA_DIARIO) || 45 },
+  global: { ventanaMs: 24 * 60 * MINUTO, maximo: Number(process.env.LIMITE_IA_DIARIO) || 300 },
   clave: 'limite.ia',
 });
 
