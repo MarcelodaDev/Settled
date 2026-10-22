@@ -189,6 +189,57 @@ export async function interpretarConsulta(pregunta, hoy) {
   return llamarHerramienta({ sistema, usuario: pregunta, herramienta: HERRAMIENTA_CONSULTA });
 }
 
+const HERRAMIENTA_ESTIMACION = {
+  name: 'estimar_trabajo',
+  description: 'Desglosa un trabajo freelance en tareas con las horas que llevaría cada una.',
+  parameters: {
+    type: 'object',
+    properties: {
+      tareas: {
+        type: 'array',
+        description: 'Entre 3 y 8 tareas concretas, en el orden en que se harían.',
+        items: {
+          type: 'object',
+          properties: {
+            tarea: { type: 'string', description: 'Nombre breve de la tarea.' },
+            horas: { type: 'number', description: 'Horas estimadas para esa tarea.' },
+          },
+          required: ['tarea', 'horas'],
+        },
+      },
+      supuestos: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Hasta 3 supuestos clave de la estimación (p. ej. "el cliente entrega los textos"), en una frase corta cada uno (máximo 20 palabras).',
+      },
+      similares: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'ids de las facturas anteriores (de la lista dada) cuyo trabajo es del mismo tipo que el nuevo. Máximo 3. Vacío si ninguna se parece de verdad.',
+      },
+    },
+    required: ['tareas', 'supuestos', 'similares'],
+  },
+};
+
+// Solo tareas y horas: la tarifa la pone el freelancer y el total lo calcula el código.
+// `anteriores` son facturas del historial (id y concepto, sin montos): la IA solo
+// señala cuáles se parecen; lo que se cobró lo lee el código de PayPal.
+export async function estimarTrabajo(descripcion, idioma = 'en', anteriores = []) {
+  const sistema = [
+    'Ayudas a un freelancer que está empezando a estimar cuánto trabajo lleva un encargo.',
+    `Escribe las tareas y los supuestos en ${nombreIdioma(idioma)}.`,
+    'Reglas:',
+    '- Estima horas realistas para un freelancer con experiencia intermedia, incluyendo comunicación con el cliente y una ronda de revisiones.',
+    '- Nunca menciones precios, tarifas ni dinero: solo tareas y horas.',
+    '- Si la descripción es vaga, asume el alcance más común para ese tipo de trabajo y dilo en los supuestos.',
+    '- Si el texto no describe un trabajo, devuelve tareas vacías y explícalo en los supuestos.',
+    '- En similares, marca solo facturas anteriores del mismo tipo de trabajo (un logo no se parece a un sitio web). Ante la duda, no la marques.',
+  ].join('\n');
+  const usuario = JSON.stringify({ trabajo_nuevo: descripcion, facturas_anteriores: anteriores });
+  return llamarHerramienta({ sistema, usuario, herramienta: HERRAMIENTA_ESTIMACION });
+}
+
 export async function interpretarCobro(instruccion, hoy, idioma = 'en') {
   const sistema = [
     'Eres el asistente de cobros de un freelancer. Conviertes su instrucción, escrita en inglés o en español, en los datos de una factura.',

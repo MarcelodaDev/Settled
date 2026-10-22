@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { interpretarCobro, redactarRecordatorio } from '../ai.js';
+import { estimarTrabajo, interpretarCobro, redactarRecordatorio } from '../ai.js';
 import { generarNumero, hoyEcuador, normalizarCobro, numeroValido } from '../cobro.js';
 import { cargarFilas, filaFresca } from '../filas.js';
 import { crearYEnviar, obtenerFactura, resumir } from '../paypal.js';
 import { describirPlazo, formatearMonto, insertarEnlace, TONOS, tonoSugerido } from '../recordatorio.js';
 import { idiomaDe, idiomaValido, m } from '../i18n.js';
 import { limiteFacturas, limiteIA } from '../limites.js';
+import { candidatosDelHistorial, normalizarEstimacion, referenciaDelHistorial } from '../precio.js';
 import * as store from '../store.js';
 
 const router = Router();
@@ -43,6 +44,26 @@ router.post('/interpretar', limiteIA, async (req, res) => {
     advertencias: limpiarAdvertencias(propuesta.advertencias),
     errores,
   });
+});
+
+// Ayuda para poner precio: la IA desglosa el trabajo en tareas y horas. Nunca
+// devuelve dinero; el total sale de multiplicar por la tarifa que elige el usuario.
+router.post('/estimar', limiteIA, async (req, res) => {
+  const idioma = idiomaDe(req);
+  const concepto = typeof req.body?.concepto === 'string' ? req.body.concepto.trim().slice(0, 200) : '';
+  const contexto = typeof req.body?.texto_original === 'string' ? req.body.texto_original.trim().slice(0, 1000) : '';
+  if (!concepto && !contexto) return res.status(400).json({ error: m(idioma, 'precio.falta_concepto') });
+
+  const descripcion = [concepto && `Trabajo: ${concepto}`, contexto && `Instrucción original: ${contexto}`].filter(Boolean).join('. ');
+  // El historial ayuda desde la segunda venta; si PayPal falla, la estimación
+  // sigue funcionando sin él.
+  const filas = await cargarFilas().then((r) => r.filas).catch(() => []);
+  const propuesta = await estimarTrabajo(descripcion, idioma, candidatosDelHistorial(filas));
+  const estimacion = normalizarEstimacion(propuesta);
+  if (!estimacion.tareas.length) {
+    return res.status(422).json({ error: m(idioma, 'precio.sin_tareas'), supuestos: estimacion.supuestos });
+  }
+  res.json({ ...estimacion, historial: referenciaDelHistorial(propuesta.similares, filas) });
 });
 
 // Paso 2: el usuario confirmó (y quizá corrigió) la propuesta. Se valida de

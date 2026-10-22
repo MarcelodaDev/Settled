@@ -5,6 +5,7 @@
 import { PAGADAS, api, dinero, fechaDeHoy, formatearFecha, hora, nombreEstado } from './formato.js';
 import { alCambiarIdioma, cambiarIdioma, t, traducirDocumento } from './i18n.js';
 import { iniciarPanel } from './panel.js';
+import { iniciarPrecio, reiniciarPrecio } from './precio.js';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -108,7 +109,21 @@ function rellenarRevision({ cobro, advertencias, errores }) {
   mostrarErrores($('#errores-2'), errores);
   marcarInvalidos();
   actualizarResumen();
+  reiniciarPrecio({ sinMonto: !cobro.monto });
 }
+
+// La ayuda para poner precio rellena el monto; el resto del formulario reacciona
+// como si el usuario lo hubiera escrito (validación y resumen).
+iniciarPrecio({
+  datos: () => ({ concepto: $('#f-concepto').value.trim(), texto_original: estado.texto }),
+  usar: (monto) => {
+    const campo = $('#f-monto');
+    campo.value = String(monto);
+    $('#form-cobro').dispatchEvent(new Event('input'));
+    campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    campo.focus({ preventScroll: true });
+  },
+});
 
 function leerFormulario() {
   const form = $('#form-cobro');

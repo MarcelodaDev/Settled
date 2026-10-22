@@ -15,6 +15,9 @@ const MENSAJES = {
     'cobro.texto_largo': 'The instruction is too long (1,000 characters max).',
     'cobro.numero_invalido': 'Invalid invoice number.',
 
+    'precio.falta_concepto': 'Describe the item first so the work can be estimated.',
+    'precio.sin_tareas': 'I couldn’t break that down into tasks. Describe the work in a bit more detail.',
+
     'recordatorio.sin_saldo': 'This invoice has no outstanding balance, so no reminder is needed.',
     'recordatorio.sin_mensaje': 'The AI didn’t return a message. Please try again.',
     'recordatorio.datos_invalidos': 'Invalid reminder data.',
@@ -53,6 +56,9 @@ const MENSAJES = {
     'cobro.texto_vacio': 'Escribe qué quieres cobrar.',
     'cobro.texto_largo': 'La instrucción es demasiado larga (máximo 1000 caracteres).',
     'cobro.numero_invalido': 'Número de factura no válido.',
+
+    'precio.falta_concepto': 'Primero describe el concepto para poder estimar el trabajo.',
+    'precio.sin_tareas': 'No pude desglosar eso en tareas. Describe el trabajo con un poco más de detalle.',
 
     'recordatorio.sin_saldo': 'Esta factura no tiene saldo pendiente; no hace falta recordatorio.',
     'recordatorio.sin_mensaje': 'La IA no devolvió un mensaje. Inténtalo de nuevo.',

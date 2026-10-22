@@ -102,6 +102,49 @@
           </aside>
         </div>
 
+        <!-- Ayuda para poner precio: la IA estima horas, tú pones la tarifa, el código suma -->
+        <section class="precio" id="precio" aria-labelledby="precio-titulo">
+          <button type="button" class="enlace precio__abrir" id="precio-abrir" aria-expanded="false" aria-controls="precio-cuerpo"></button>
+
+          <div class="precio__cuerpo" id="precio-cuerpo" hidden>
+            <h2 class="precio__titulo" id="precio-titulo" data-i18n="precio.titulo"></h2>
+            <p class="precio__nota" data-i18n="precio.nota"></p>
+            <p class="aviso" id="precio-aviso" role="status"></p>
+
+            <div id="precio-resultado" hidden>
+              <table class="precio__tabla">
+                <thead>
+                  <tr><th scope="col" data-i18n="precio.tarea"></th><th scope="col" class="cifra" data-i18n="precio.horas"></th></tr>
+                </thead>
+                <tbody id="precio-tareas"></tbody>
+                <tfoot>
+                  <tr><th scope="row" data-i18n="precio.total_horas"></th><td class="cifra" id="precio-total-horas"></td></tr>
+                </tfoot>
+              </table>
+
+              <ul class="precio__supuestos" id="precio-supuestos"></ul>
+
+              <div class="precio__tarifa">
+                <label for="precio-tarifa"><span data-i18n="precio.tarifa"></span> <span class="opcional">USD</span></label>
+                <input id="precio-tarifa" class="cifra" inputmode="decimal" autocomplete="off" data-i18n-placeholder="precio.tarifa.placeholder">
+              </div>
+              <p class="precio__total" id="precio-total"></p>
+
+              <div class="precio__historial" id="precio-historial" hidden>
+                <h3 class="precio__subtitulo" data-i18n="precio.historial"></h3>
+                <ul class="precio__lista" id="precio-historial-lista"></ul>
+                <p class="precio__promedio" id="precio-promedio"></p>
+                <button type="button" class="enlace" id="precio-usar-historial"></button>
+              </div>
+
+              <div class="acciones acciones--compactas">
+                <button type="button" class="boton" id="precio-usar" disabled></button>
+                <button type="button" class="enlace" id="precio-rehacer" data-i18n="precio.rehacer"></button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <p class="resumen" id="resumen"></p>
         <ul class="error" id="errores-2" role="alert" hidden></ul>
 
