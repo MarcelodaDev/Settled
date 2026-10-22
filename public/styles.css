@@ -52,6 +52,7 @@ body {
   color: var(--gris);
   font-size: 15px;
   text-decoration: none;
+  white-space: nowrap;
   padding-bottom: 15px;
   margin-bottom: -16px;
   border-bottom: 2px solid transparent;
@@ -446,6 +447,129 @@ body {
 .tabla .ag-row-pinned .ag-cell { font-size: 13px; }
 .tabla-vacia { font: italic 17px var(--serif); color: var(--gris); }
 
+.tabla .fila-pulsable { cursor: pointer; }
+.pista { margin: 14px 0 0; font-size: 13px; color: var(--gris); }
+
+/* Panel lateral de detalle */
+
+body.con-detalle { overflow: hidden; }
+
+.velo {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(22, 20, 15, 0.28);
+}
+
+.detalle {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  width: min(480px, 100%);
+  overflow-y: auto;
+  padding: 24px 28px 48px;
+  background: var(--papel);
+  border-left: 2px solid var(--tinta);
+}
+
+.detalle__cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--filete);
+}
+
+.detalle__numero {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gris);
+}
+
+.detalle__numero .cifra { letter-spacing: 0; text-transform: none; color: var(--tinta); margin-left: 4px; }
+
+.detalle__cliente {
+  margin: 24px 0 4px;
+  font: 400 34px/1.1 var(--serif);
+  letter-spacing: -0.01em;
+}
+
+.detalle__concepto { margin: 0 0 24px; font: italic 18px/1.4 var(--serif); color: var(--gris); }
+
+.libro--compacto .fila { grid-template-columns: 110px minmax(0, 1fr); padding: 9px 0; }
+.libro--compacto .fila dd { font-size: 16px; }
+.libro--compacto .fila dd.cifra { font-size: 14px; }
+
+.detalle__etiqueta {
+  display: block;
+  margin: 0 0 6px;
+  font: 500 12px/1.2 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gris);
+}
+
+.detalle__original {
+  margin: 24px 0 0;
+  padding-left: 14px;
+  border-left: 1px solid var(--tinta);
+  font: italic 16px/1.4 var(--serif);
+  color: var(--gris);
+}
+
+.detalle__nota { margin: 28px 0 0; font: italic 17px var(--serif); color: var(--ok); }
+
+.recordatorio { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--tinta); }
+
+.recordatorio__titulo { margin: 0 0 14px; font: 400 24px/1.2 var(--serif); }
+
+.tonos { display: flex; flex-wrap: wrap; gap: 4px 22px; margin-bottom: 20px; }
+
+.tono {
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  color: var(--gris);
+  font: 500 14px/1.4 var(--sans);
+  cursor: pointer;
+}
+
+.tono:hover { color: var(--tinta); }
+.tono[aria-checked="true"] { color: var(--tinta); border-bottom-color: var(--tinta); }
+.tono:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
+.tono__sugerido { margin-left: 4px; font: italic 400 13px var(--serif); color: var(--acento); }
+
+.borrador { margin-top: 24px; }
+
+.campo { display: block; margin-bottom: 16px; }
+.campo__etiqueta { display: block; margin-bottom: 4px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gris); }
+.campo__etiqueta .opcional { text-transform: none; letter-spacing: 0; }
+
+.campo input, .campo textarea {
+  width: 100%;
+  padding: 10px 0;
+  border: 0;
+  border-top: 1px solid var(--filete);
+  border-bottom: 1px solid var(--filete);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tinta);
+  font: 400 16px/1.5 var(--serif);
+  resize: vertical;
+}
+
+.campo input:focus, .campo textarea:focus { outline: none; border-color: var(--tinta); }
+
+.acciones--compactas { margin-top: 8px; gap: 12px 20px; }
+
+.historial { margin: 0; padding: 0; list-style: none; }
+.historial li { padding: 6px 0; border-bottom: 1px solid var(--filete); font-size: 14px; }
+#d-historial-bloque { margin-top: 28px; }
+
 /* Móvil */
 
 @media (max-width: 720px) {
@@ -459,4 +583,5 @@ body {
   .cifras { grid-template-columns: 1fr; }
   .cifra-bloque { padding: 14px 0; border-left: 0; border-top: 1px solid var(--filete); }
   .cifra-bloque:first-child { border-top: 0; }
+  .detalle { padding: 20px 16px 40px; border-left: 0; }
 }

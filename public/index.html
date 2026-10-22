@@ -154,7 +154,71 @@
       </div>
 
       <div id="tabla-cobros" class="tabla"></div>
+      <p class="pista">Pulsa una factura para ver el detalle o redactar un recordatorio.</p>
     </section>
+
+    <!-- Panel lateral: detalle y recordatorio -->
+    <div class="velo" id="velo" hidden></div>
+    <aside class="detalle" id="detalle" role="dialog" aria-modal="true" aria-labelledby="d-cliente" hidden>
+      <div class="detalle__cabecera">
+        <span class="detalle__numero">Factura <span class="cifra" id="d-numero"></span></span>
+        <button type="button" class="enlace" id="d-cerrar">Cerrar</button>
+      </div>
+
+      <h2 class="detalle__cliente" id="d-cliente"></h2>
+      <p class="detalle__concepto" id="d-concepto"></p>
+
+      <dl class="libro libro--compacto">
+        <div class="fila"><dt>Estado</dt><dd id="d-estado"></dd></div>
+        <div class="fila"><dt>Total</dt><dd class="cifra" id="d-total"></dd></div>
+        <div class="fila"><dt>Cobrado</dt><dd class="cifra" id="d-cobrado"></dd></div>
+        <div class="fila"><dt>Pendiente</dt><dd class="cifra" id="d-pendiente"></dd></div>
+        <div class="fila"><dt>Vence</dt><dd id="d-vence"></dd></div>
+        <div class="fila"><dt>Correo</dt><dd id="d-email"></dd></div>
+      </dl>
+
+      <p class="detalle__original" id="d-original" hidden>
+        <span class="detalle__etiqueta">Lo pediste así</span>
+        <span id="d-original-texto"></span>
+      </p>
+
+      <p class="detalle__nota" id="d-sin-saldo" hidden>Esta factura no tiene saldo pendiente.</p>
+
+      <section class="recordatorio" id="d-recordatorio" aria-labelledby="d-recordatorio-titulo">
+        <h3 class="recordatorio__titulo" id="d-recordatorio-titulo">Recordatorio</h3>
+
+        <div class="tonos" role="radiogroup" aria-label="Tono del recordatorio">
+          <button type="button" class="tono" role="radio" data-tono="amable" aria-checked="true">Amable <span class="tono__sugerido">sugerido</span></button>
+          <button type="button" class="tono" role="radio" data-tono="firme" aria-checked="false">Firme <span class="tono__sugerido" hidden>sugerido</span></button>
+          <button type="button" class="tono" role="radio" data-tono="final" aria-checked="false">Último aviso <span class="tono__sugerido" hidden>sugerido</span></button>
+        </div>
+
+        <button type="button" class="boton" id="d-redactar">Redactar con IA</button>
+
+        <div class="borrador" id="d-borrador" hidden>
+          <label class="campo">
+            <span class="campo__etiqueta">Asunto</span>
+            <input id="d-asunto" autocomplete="off">
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Mensaje <span class="opcional">puedes editarlo</span></span>
+            <textarea id="d-mensaje" rows="11"></textarea>
+          </label>
+          <div class="acciones acciones--compactas">
+            <button type="button" class="boton" id="d-copiar">Copiar mensaje</button>
+            <a class="enlace" id="d-whatsapp" target="_blank" rel="noopener">Abrir en WhatsApp</a>
+            <a class="enlace" id="d-correo" hidden>Enviar por correo</a>
+          </div>
+        </div>
+
+        <p class="aviso" id="d-aviso" role="status"></p>
+
+        <div id="d-historial-bloque" hidden>
+          <h4 class="detalle__etiqueta">Recordatorios enviados</h4>
+          <ul class="historial" id="d-historial"></ul>
+        </div>
+      </section>
+    </aside>
   </main>
 
   <script src="vendor/ag-grid-community.min.js"></script>

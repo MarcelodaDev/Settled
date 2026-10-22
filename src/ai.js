@@ -87,6 +87,54 @@ const HERRAMIENTA_COBRO = {
   },
 };
 
+const HERRAMIENTA_RECORDATORIO = {
+  name: 'redactar_recordatorio',
+  description: 'Entrega el recordatorio de pago redactado para el cliente.',
+  parameters: {
+    type: 'object',
+    properties: {
+      asunto: { type: 'string', description: 'Asunto breve para correo, en español, sin emojis.' },
+      mensaje: {
+        type: 'string',
+        description: 'Cuerpo del mensaje en español, listo para enviar por correo o WhatsApp. Debe incluir la marca {{enlace}} exactamente una vez donde va el enlace de pago.',
+      },
+    },
+    required: ['asunto', 'mensaje'],
+  },
+};
+
+// `datos` sale de la factura leída de PayPal en ese momento, no del navegador.
+export async function redactarRecordatorio(datos, tono, descripcionTono) {
+  const sistema = [
+    'Redactas recordatorios de pago para un freelancer en Ecuador que escribe a sus clientes en español neutro, con tuteo respetuoso.',
+    `Tono: ${descripcionTono}`,
+    'Reglas:',
+    '- Usa solo los datos proporcionados. No inventes montos, fechas, penalizaciones, intereses ni consecuencias.',
+    '- Describe el plazo exactamente como indica "situacion_del_plazo". Nunca digas que la factura venció si ahí no lo dice.',
+    '- Copia montos y fechas tal como vienen escritos.',
+    '- Menciona el concepto y el monto pendiente.',
+    '- Si el cliente ya pagó una parte (anticipo), agradécelo y menciona solo el saldo pendiente.',
+    '- Escribe {{enlace}} exactamente una vez, solo en su propia línea, donde va el enlace de pago; nunca escribas una URL.',
+    '- Máximo 90 palabras. Sin emojis, sin markdown, sin firmas inventadas.',
+    datos.firma ? `- Firma con: ${datos.firma}` : '- No añadas firma con nombre.',
+  ].join('\n');
+
+  const usuario = JSON.stringify({
+    tono,
+    cliente: datos.cliente,
+    concepto: datos.concepto,
+    total: datos.total,
+    ya_pagado: datos.cobrado,
+    pendiente: datos.pendiente,
+    situacion_del_plazo: datos.situacion,
+    el_cliente_abrio_la_factura: datos.vista,
+    recordatorios_enviados_antes: datos.recordatorios_previos,
+    numero_factura: datos.numero,
+  });
+
+  return llamarHerramienta({ sistema, usuario, herramienta: HERRAMIENTA_RECORDATORIO });
+}
+
 export async function interpretarCobro(instruccion, hoy) {
   const sistema = [
     'Eres el asistente de cobros de un freelancer en Ecuador. Conviertes su instrucción en los datos de una factura.',

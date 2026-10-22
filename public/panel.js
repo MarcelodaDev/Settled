@@ -1,7 +1,8 @@
 // Panel de cobros con AG Grid. Los datos vienen de GET /api/cobros, que los lee
 // de PayPal en cada carga.
 
-import { ESTADOS, PAGADAS, el, fechaBreve, usd } from './formato.js';
+import { abrirDetalle, iniciarDetalle } from './detalle.js';
+import { ESTADOS, PAGADAS, el, fechaBreve, fechaRelativa, usd } from './formato.js';
 
 const { createGrid, themeQuartz } = window.agGrid;
 
@@ -71,7 +72,12 @@ function celdaEstado(p) {
   } else if (f.pendiente === 0) {
     tono = 'cerrada';
   }
-  const secundaria = f.pendiente > 0 ? (f.vista ? 'El cliente la abrió' : 'Sin abrir') : '';
+  const ultimo = f.recordatorios?.at(-1);
+  let secundaria = '';
+  if (f.pendiente > 0) {
+    if (ultimo) secundaria = `Recordado ${fechaRelativa(ultimo.fecha)}`;
+    else secundaria = f.vista ? 'El cliente la abrió' : 'Sin abrir';
+  }
   caja.append(el('span', `estado estado--${tono}`, texto), el('span', 'celda-doble__secundaria', secundaria));
   return caja;
 }
@@ -232,7 +238,17 @@ function ajustarColumnas(ancho) {
   api.sizeColumnsToFit();
 }
 
+// Tras registrar un recordatorio, la fila se actualiza sin recargar desde PayPal.
+function actualizarFila(fila) {
+  filas = filas.map((f) => (f.id === fila.id ? fila : f));
+  api.applyTransaction({ update: [fila] });
+  // La celda de estado depende del historial, no de su valor: hay que forzarla.
+  const nodo = api.getRowNode(fila.id);
+  if (nodo) api.refreshCells({ rowNodes: [nodo], columns: ['estado'], force: true });
+}
+
 export function iniciarPanel() {
+  iniciarDetalle();
   api = createGrid($('#tabla-cobros'), {
     theme: tema,
     columnDefs: columnas,
@@ -247,6 +263,13 @@ export function iniciarPanel() {
     isExternalFilterPresent: () => filtro !== 'todas',
     doesExternalFilterPass: (nodo) => FILTROS[filtro](nodo.data),
     onModelUpdated: actualizarTotales,
+    rowClass: 'fila-pulsable',
+    onRowClicked: (e) => {
+      if (e.node.rowPinned) return;
+      // El enlace "Pago ↗" de la fila abre PayPal, no el detalle.
+      if (e.event?.target?.closest?.('a')) return;
+      abrirDetalle(e.data, { onCambio: actualizarFila });
+    },
     initialState: { sort: { sortModel: [{ colId: 'estado', sort: 'asc' }] } },
     overlayNoRowsTemplate: '<span class="tabla-vacia">No hay cobros que mostrar.</span>',
     localeText: {

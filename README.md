@@ -32,6 +32,13 @@ Proyecto para la hackatón *Build What's Next with PayPal and AI*. **Solo usa el
    - El listado de PayPal no incluye el concepto ni el enlace de pago. Esos datos no cambian, así que se piden una vez por factura y quedan en memoria; el estado y los montos se leen frescos en cada carga.
    - "Vencida" no es un estado de PayPal: el servidor la calcula como factura abierta con la fecha límite pasada (hora de Ecuador).
 
+6. **Recordatorios.** Al pulsar una factura del panel se abre su detalle, y ahí la IA redacta un recordatorio (`POST /api/cobros/:id/recordatorio`).
+   - El **tono lo decide el código** según el atraso: amable antes de vencer, firme hasta 14 días de atraso y último aviso a partir de ahí. El freelancer puede cambiarlo.
+   - La factura se lee **fresca de PayPal** al redactar: nunca se recuerda una factura pagada ni un monto desactualizado.
+   - La situación del plazo ("vence en 15 días", "lleva 20 días de atraso") la calcula el servidor y se le da redactada a la IA, para que no pueda inventar atrasos.
+   - La IA escribe `{{enlace}}` en lugar de la URL y el servidor pone el enlace real de PayPal en su propia línea: un modelo puede alterar una URL larga.
+   - El freelancer edita el texto y lo envía por su canal: copiar, WhatsApp o correo. Cada envío queda en el historial (`POST /api/cobros/:id/recordatorios`), un dato que PayPal no guarda.
+
 ## Panel con AG Grid
 
 El panel usa [AG Grid Community](https://www.ag-grid.com/) 36.2.0, servido desde `node_modules` (versión fija, sin CDN).
@@ -46,7 +53,10 @@ El panel usa [AG Grid Community](https://www.ag-grid.com/) 36.2.0, servido desde
 ## Uso de IA
 
 - **Modelo:** `anthropic/claude-haiku-5.5` vía OpenRouter (se puede cambiar en `OPENROUTER_MODEL`).
-- **Para qué:** convertir instrucciones en español a datos de factura estructurados, normalizar el concepto como línea de factura y señalar datos faltantes o ambiguos (por ejemplo, monedas distintas de USD).
+- **Para qué:**
+  - Convertir instrucciones en español a datos de factura estructurados, normalizar el concepto como línea de factura y señalar datos faltantes o ambiguos (por ejemplo, monedas distintas de USD).
+  - Redactar recordatorios de pago en el tono que corresponde al atraso, con los datos reales de la factura en PayPal.
+- **Cómo:** en ambos casos con tool calling forzado (`proponer_cobro`, `redactar_recordatorio`), así que la respuesta siempre tiene un esquema fijo que el servidor valida.
 
 ## Cómo correrlo localmente
 
@@ -62,7 +72,7 @@ npm install
 npm start              # http://localhost:3000  (npm run dev recarga al guardar)
 ```
 
-Para probar un pago, abre el enlace de la factura e inicia sesión con tu cuenta **Personal** de sandbox (*Testing Tools > Sandbox Accounts* en developer.paypal.com).
+Para probar un pago, abre el enlace de la factura **en un navegador normal (Chrome, Firefox…)** e inicia sesión con tu cuenta **Personal** de sandbox (*Testing Tools > Sandbox Accounts* en developer.paypal.com). PayPal abre una ventana emergente para confirmar el pago: si el navegador la bloquea, al pulsar "Pagar" no pasa nada.
 
 ## Licencia
 

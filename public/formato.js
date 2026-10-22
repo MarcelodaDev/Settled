@@ -13,6 +13,14 @@ export function fechaBreve(iso) {
   return iso ? fechaCorta.format(new Date(`${iso}T00:00:00Z`)).replace('.', '') : null;
 }
 
+const relativa = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
+
+// "hoy", "ayer", "hace 3 días"…
+export function fechaRelativa(iso) {
+  const dias = Math.round((Date.now() - Date.parse(iso)) / (24 * 60 * 60 * 1000));
+  return dias < 1 ? 'hoy' : relativa.format(-dias, 'day');
+}
+
 export const ESTADOS = {
   DRAFT: 'Borrador',
   SCHEDULED: 'Programada',

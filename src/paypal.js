@@ -139,6 +139,13 @@ export function recordarFijos(factura) {
   fijos.set(factura.id, datosFijos(factura));
 }
 
+// Una factura leída con GET ya trae los datos fijos: se guardan y se adjuntan
+// con la misma forma que usa listarFacturas.
+export function conFijos(factura) {
+  recordarFijos(factura);
+  return { ...factura, fijos: fijos.get(factura.id) };
+}
+
 // Todas las facturas de la cuenta (hasta 500), más recientes primero.
 export async function listarFacturas() {
   const facturas = [];
