@@ -165,6 +165,9 @@ function actualizarResumen() {
 }
 
 $('#form-cobro').addEventListener('input', () => {
+  // Los avisos del servidor describen los datos de antes de editar: se quitan.
+  // Los campos inválidos siguen marcados y el servidor valida otra vez al crear.
+  mostrarErrores($('#errores-2'), []);
   marcarInvalidos();
   actualizarResumen();
 });
