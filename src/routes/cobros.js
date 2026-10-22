@@ -4,6 +4,7 @@ import { generarNumero, hoyEcuador, normalizarCobro, numeroValido } from '../cob
 import { cargarFilas, filaFresca } from '../filas.js';
 import { crearYEnviar, obtenerFactura, resumir } from '../paypal.js';
 import { describirPlazo, formatearMonto, insertarEnlace, TONOS, tonoSugerido } from '../recordatorio.js';
+import { limiteFacturas, limiteIA } from '../limites.js';
 import * as store from '../store.js';
 
 const router = Router();
@@ -17,7 +18,7 @@ router.get('/', async (req, res) => {
 });
 
 // Paso 1: la IA propone. Esta ruta nunca crea nada en PayPal.
-router.post('/interpretar', async (req, res) => {
+router.post('/interpretar', limiteIA, async (req, res) => {
   const texto = typeof req.body?.texto === 'string' ? req.body.texto.trim() : '';
   if (!texto) return res.status(400).json({ error: 'Escribe qué quieres cobrar.' });
   if (texto.length > 1000) return res.status(400).json({ error: 'La instrucción es demasiado larga (máximo 1000 caracteres).' });
@@ -35,7 +36,7 @@ router.post('/interpretar', async (req, res) => {
 
 // Paso 2: el usuario confirmó (y quizá corrigió) la propuesta. Se valida de
 // nuevo aquí, porque lo que llega del navegador no es de fiar.
-router.post('/', async (req, res) => {
+router.post('/', limiteFacturas, async (req, res) => {
   const { cobro, errores } = normalizarCobro(req.body?.cobro);
   if (errores.length) return res.status(400).json({ error: errores[0], errores });
 
@@ -61,7 +62,7 @@ router.get('/:id', async (req, res) => {
 
 // La IA redacta un recordatorio. Los datos se leen de PayPal en este momento:
 // así nunca se recuerda una factura ya pagada ni un monto desactualizado.
-router.post('/:id/recordatorio', async (req, res) => {
+router.post('/:id/recordatorio', limiteIA, async (req, res) => {
   const fila = await filaFresca(req.params.id);
   if (fila.pendiente <= 0) {
     return res.status(409).json({ error: 'Esta factura no tiene saldo pendiente; no hace falta recordatorio.' });

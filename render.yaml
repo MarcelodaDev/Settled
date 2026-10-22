@@ -1,0 +1,27 @@
+# Blueprint de Render: define el servicio web de la demo.
+# En Render: New > Blueprint > este repositorio. Las variables con `sync: false`
+# las pide Render al crear el servicio y nunca se guardan en el repo.
+
+services:
+  - type: web
+    name: payflow
+    runtime: node
+    plan: free
+    # Virginia es la región de Render más cercana a Ecuador.
+    region: virginia
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/salud
+    envVars:
+      - key: PAYPAL_API_BASE
+        value: https://api-m.sandbox.paypal.com
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: anthropic/claude-haiku-5.5
+      - key: FREELANCER_NOMBRE
+        sync: false

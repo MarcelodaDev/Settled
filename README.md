@@ -1,4 +1,6 @@
-# Cobrador con IA para freelancers
+# PayFlow
+
+**Cobrador con IA para freelancers.**
 
 Escribe en español lo que quieres cobrar, por ejemplo *"Cóbrale $300 a Juan por el sitio web, 50% de anticipo"*, y la app:
 
@@ -80,6 +82,21 @@ npm start              # http://localhost:3000  (npm run dev recarga al guardar)
 ```
 
 Para probar un pago, abre el enlace de la factura **en un navegador normal (Chrome, Firefox…)** e inicia sesión con tu cuenta **Personal** de sandbox (*Testing Tools > Sandbox Accounts* en developer.paypal.com). PayPal abre una ventana emergente para confirmar el pago: si el navegador la bloquea, al pulsar "Pagar" no pasa nada.
+
+## Desplegar en Render
+
+El repo incluye un [Blueprint](render.yaml) de Render: un servicio web Node en el plan gratuito, con `npm ci` para construir, `npm start` para arrancar y `/api/salud` como comprobación de salud.
+
+1. En [dashboard.render.com](https://dashboard.render.com): **New > Blueprint** y elige este repositorio.
+2. Render pide las variables marcadas como secretas: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `OPENROUTER_API_KEY` y `FREELANCER_NOMBRE` (opcional). Nunca se guardan en el repo.
+3. Cada push a `main` vuelve a desplegar la app.
+
+Protecciones de la demo pública:
+
+- **Solo sandbox:** el servidor no arranca si `PAYPAL_API_BASE` no apunta al sandbox de PayPal.
+- **Límites de uso** por visitante y globales en las rutas que llaman a la IA o crean facturas, para que nadie agote los créditos de la IA.
+- El plan gratuito **se duerme tras 15 minutos sin visitas** y tarda cerca de un minuto en despertar: abre la URL un momento antes de usarla.
+- El disco de Render es efímero: `data/cobros.json` (texto original e historial de recordatorios) se pierde al redesplegar. Las facturas no, porque viven en PayPal.
 
 ## Licencia
 

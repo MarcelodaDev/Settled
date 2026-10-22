@@ -21,7 +21,7 @@ async function llamarHerramienta({ sistema, usuario, herramienta }) {
     headers: {
       Authorization: `Bearer ${clave}`,
       'Content-Type': 'application/json',
-      'X-Title': 'Cobrador con IA',
+      'X-Title': 'PayFlow',
     },
     body: JSON.stringify({
       model: modelo,

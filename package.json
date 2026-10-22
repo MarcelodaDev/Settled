@@ -1,7 +1,7 @@
 {
-  "name": "cobrador-ia",
+  "name": "payflow",
   "version": "0.1.0",
-  "description": "Cobrador con IA para freelancers: lenguaje natural a facturas de PayPal (sandbox).",
+  "description": "PayFlow, cobrador con IA para freelancers: lenguaje natural a facturas de PayPal (sandbox).",
   "main": "server.js",
   "type": "module",
   "scripts": {

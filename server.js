@@ -4,7 +4,30 @@ import { mensajeParaUsuario, PayPalError } from './src/paypal.js';
 import cobros from './src/routes/cobros.js';
 import consultas from './src/routes/consultas.js';
 
+// Regla del proyecto: solo sandbox. Si alguien apunta a la API real de PayPal,
+// el servidor no arranca en lugar de arriesgar dinero real.
+const BASE_PAYPAL = process.env.PAYPAL_API_BASE || 'https://api-m.sandbox.paypal.com';
+if (!new URL(BASE_PAYPAL).hostname.endsWith('sandbox.paypal.com')) {
+  console.error(`PAYPAL_API_BASE debe ser el sandbox de PayPal (recibido: ${BASE_PAYPAL}).`);
+  process.exit(1);
+}
+
 const app = express();
+
+// En Render la app va detrás de un proxy: así req.ip es la IP real del
+// visitante y los límites de uso funcionan por persona.
+app.set('trust proxy', 1);
+
+// Render consulta esta ruta para saber si la app arrancó. Dice qué falta
+// configurar, nunca los valores.
+app.get('/api/salud', (req, res) => {
+  res.json({
+    ok: true,
+    paypal: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
+    ia: Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_MODEL),
+    entorno: 'sandbox',
+  });
+});
 
 app.use(express.json({ limit: '20kb' }));
 app.use(express.static('public'));
@@ -29,4 +52,4 @@ app.use((error, req, res, next) => {
 });
 
 const puerto = process.env.PORT || 3000;
-app.listen(puerto, () => console.log(`Cobrador con IA en http://localhost:${puerto}`));
+app.listen(puerto, () => console.log(`PayFlow en http://localhost:${puerto}`));
