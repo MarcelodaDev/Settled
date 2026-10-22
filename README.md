@@ -66,7 +66,7 @@ The dashboard uses [AG Grid Community](https://www.ag-grid.com/) 36.2.0, served 
 
 ## AI usage
 
-- **Model:** `anthropic/claude-haiku-5.5` via OpenRouter (configurable with `OPENROUTER_MODEL`).
+- **Model:** `minimax/minimax-m3.1-flash:free` via OpenRouter, a free model (configurable with `OPENROUTER_MODEL`). Free models on OpenRouter allow a limited number of requests per day, so the app caps AI calls at 45 per day by default (`LIMITE_IA_DIARIO`) and shows a clear message when the quota is used up.
 - **What for:**
   - Turning billing instructions, in English or Spanish, into structured invoice data, writing the item as a professional invoice line and flagging missing or ambiguous data (for example, currencies other than USD).
   - Drafting payment reminders in the tone that fits the delay and in the client's language, using the real invoice data from PayPal.

@@ -29,6 +29,7 @@ const MENSAJES = {
     'ia.config': 'OPENROUTER_API_KEY or OPENROUTER_MODEL is missing from the environment.',
     'ia.no_disponible': 'The AI isn’t available right now.',
     'ia.ilegible': 'The AI returned something unreadable. Try rephrasing.',
+    'ia.cuota': 'The demo’s daily AI quota has been used up. It resets every day; please try again later.',
 
     'paypal.duplicada': 'This invoice was already created. Check your invoices before trying again.',
     'paypal.credenciales': 'The PayPal credentials aren’t valid. Check the server configuration.',
@@ -71,6 +72,7 @@ const MENSAJES = {
     'ia.config': 'Faltan OPENROUTER_API_KEY u OPENROUTER_MODEL en el entorno.',
     'ia.no_disponible': 'La IA no está disponible en este momento.',
     'ia.ilegible': 'La IA devolvió algo ilegible. Prueba a reformularlo.',
+    'ia.cuota': 'Se agotó la cuota diaria de IA de la demo. Se renueva cada día; inténtalo más tarde.',
 
     'paypal.duplicada': 'Esta factura ya se había creado. Revisa tus cobros antes de intentarlo de nuevo.',
     'paypal.credenciales': 'Las credenciales de PayPal no son válidas. Revisa la configuración del servidor.',

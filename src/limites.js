@@ -39,9 +39,11 @@ export function limitar({ porVisitante, global, clave }) {
   };
 }
 
+// El modelo gratuito de OpenRouter admite 50 peticiones al día en total: la app
+// corta en 45 para responder con un mensaje propio antes de que lo haga OpenRouter.
 export const limiteIA = limitar({
   porVisitante: { ventanaMs: 10 * MINUTO, maximo: 30 },
-  global: { ventanaMs: 24 * 60 * MINUTO, maximo: 600 },
+  global: { ventanaMs: 24 * 60 * MINUTO, maximo: Number(process.env.LIMITE_IA_DIARIO) || 45 },
   clave: 'limite.ia',
 });
 

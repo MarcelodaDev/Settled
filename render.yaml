@@ -22,6 +22,6 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
-        value: anthropic/claude-haiku-5.5
+        value: minimax/minimax-m3.1-flash:free
       - key: FREELANCER_NOMBRE
         sync: false

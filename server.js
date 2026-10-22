@@ -27,6 +27,8 @@ app.get('/api/salud', (req, res) => {
     paypal: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
     ia: Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_MODEL),
     entorno: 'sandbox',
+    // El nombre del modelo no es un secreto: sirve para comprobar qué usa el despliegue.
+    modelo: process.env.OPENROUTER_MODEL || null,
   });
 });
 
