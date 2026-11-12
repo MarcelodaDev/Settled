@@ -16,7 +16,7 @@ It works in **English and Spanish**: the interface switches with one click, and 
 
 Built for the *Build What's Next with PayPal and AI* hackathon. **It only uses the PayPal sandbox: no real money moves.**
 
-> Status: in development. This README is updated as the project moves forward.
+> Status: submitted to the Build What's Next with PayPal and AI hackathon (November 2026).
 
 ## Stack
 
