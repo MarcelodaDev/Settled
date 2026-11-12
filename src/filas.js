@@ -43,10 +43,19 @@ export function aFila(factura, extras, hoy) {
   };
 }
 
+// Las canceladas no tienen nada que cobrar: no se muestran ni cuentan.
+const CANCELADAS = new Set(['CANCELLED', 'AUTO_CANCELLED']);
+
+// Números de factura que no deben aparecer (p. ej. pruebas antiguas que PayPal
+// no deja cancelar porque tienen pagos). Siguen existiendo en PayPal.
+const OCULTAS = new Set((process.env.FACTURAS_OCULTAS ?? '').split(',').map((n) => n.trim()).filter(Boolean));
+
+const visible = (f) => !CANCELADAS.has(f.status) && !OCULTAS.has(f.detail?.invoice_number);
+
 export async function cargarFilas() {
   const [facturas, extras] = await Promise.all([listarFacturas(), store.leerTodos()]);
   const hoy = hoyEcuador();
-  return { hoy, filas: facturas.map((f) => aFila(f, extras[f.id], hoy)) };
+  return { hoy, filas: facturas.filter(visible).map((f) => aFila(f, extras[f.id], hoy)) };
 }
 
 export async function filaFresca(id) {

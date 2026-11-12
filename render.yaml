@@ -25,3 +25,5 @@ services:
         value: anthropic/claude-haiku-5.5
       - key: FREELANCER_NOMBRE
         sync: false
+      - key: FACTURAS_OCULTAS
+        sync: false
