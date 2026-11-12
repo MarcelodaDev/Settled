@@ -1,10 +1,19 @@
-// Llamadas a la IA vía OpenRouter (API compatible con OpenAI).
+// Llamadas a la IA por una API compatible con OpenAI (Groq u OpenRouter).
 // Usamos tool calling forzado: el modelo no responde con texto libre, sino
 // rellenando los argumentos de una función con un esquema fijo.
 
-const URL = 'https://openrouter.ai/api/v1/chat/completions';
-
 import { nombreIdioma } from './i18n.js';
+
+// El proveedor se elige por variables de entorno, sin tocar código. IA_* tiene
+// prioridad; OPENROUTER_* se mantiene como alternativa.
+export function configuracionIA() {
+  const e = process.env;
+  return {
+    url: e.IA_URL || 'https://openrouter.ai/api/v1/chat/completions',
+    clave: e.IA_API_KEY || e.OPENROUTER_API_KEY,
+    modelo: e.IA_MODELO || e.OPENROUTER_MODEL,
+  };
+}
 
 // `clave` es un mensaje de src/i18n.js: el manejador de errores lo traduce al
 // idioma de quien hizo la petición.
@@ -20,13 +29,47 @@ export class IAError extends Error {
 // Sin max_tokens, OpenRouter reserva el máximo del modelo (65.536 tokens) y
 // rechaza con 402 si la cuenta no podría pagar ese peor caso, aunque la
 // respuesta real use unos cientos. Cada función declara un tope realista.
-async function llamarHerramienta({ sistema, usuario, herramienta, maxTokens = 1000 }) {
-  const { OPENROUTER_API_KEY: clave, OPENROUTER_MODEL: modelo } = process.env;
+// Reintentos para fallos pasajeros del proveedor:
+// - 429 con espera corta (Groq gratuito limita los tokens por minuto y dice
+//   cuánto esperar): se espera y se reintenta;
+// - 400 "Failed to parse tool call arguments" (JSON mal formado del modelo):
+//   se reintenta una vez.
+const ESPERA_MAXIMA_MS = 8000;
+const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function esperaSugerida(res, datos) {
+  const cabecera = Number(res.headers.get('retry-after'));
+  if (Number.isFinite(cabecera) && cabecera > 0) return cabecera * 1000;
+  const texto = datos?.error?.message ?? '';
+  const m = texto.match(/try again in ([\d.]+)(ms|s)/i);
+  if (!m) return null;
+  return Number(m[1]) * (m[2].toLowerCase() === 'ms' ? 1 : 1000);
+}
+
+async function llamarHerramienta(opciones) {
+  const limite = Date.now() + 30000;
+  for (let intento = 0; ; intento++) {
+    try {
+      return await llamarUnaVez(opciones, limite);
+    } catch (error) {
+      const espera = error.esperaMs;
+      const reintentable = intento < 2 && (
+        (espera != null && espera <= ESPERA_MAXIMA_MS && Date.now() + espera < limite) ||
+        (error.jsonMalo && intento === 0)
+      );
+      if (!reintentable) throw error;
+      await esperar((espera ?? 300) + 150);
+    }
+  }
+}
+
+async function llamarUnaVez({ sistema, usuario, herramienta, maxTokens = 1000 }, limite) {
+  const { url, clave, modelo } = configuracionIA();
   if (!clave || !modelo) throw new IAError('ia.config');
 
   // Un modelo lento o caído no debe dejar el botón en "Pensando…" para siempre.
-  const res = await fetch(URL, {
-    signal: AbortSignal.timeout(30000),
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(Math.max(1000, limite - Date.now())),
     method: 'POST',
     headers: {
       Authorization: `Bearer ${clave}`,
@@ -54,14 +97,19 @@ async function llamarHerramienta({ sistema, usuario, herramienta, maxTokens = 10
   if (!res.ok) {
     console.error(`[ia] ${res.status}`, datos?.error?.message ?? '');
     // 402: se alcanzó el límite de gasto de la clave; 429: cuota o ritmo excedidos.
-    throw new IAError(res.status === 402 || res.status === 429 ? 'ia.cuota' : 'ia.no_disponible', datos?.error);
+    const error = new IAError(res.status === 402 || res.status === 429 ? 'ia.cuota' : 'ia.no_disponible', datos?.error);
+    if (res.status === 429) error.esperaMs = esperaSugerida(res, datos);
+    if (res.status === 400 && /tool call|parse/i.test(datos?.error?.message ?? '')) error.jsonMalo = true;
+    throw error;
   }
 
   const llamada = datos.choices?.[0]?.message?.tool_calls?.[0];
   try {
     return JSON.parse(llamada.function.arguments);
   } catch {
-    throw new IAError('ia.ilegible');
+    const error = new IAError('ia.ilegible');
+    error.jsonMalo = true; // una respuesta sin herramienta suele salir bien al reintentar
+    throw error;
   }
 }
 

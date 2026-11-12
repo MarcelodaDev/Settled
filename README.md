@@ -23,7 +23,7 @@ Built for the *Build What's Next with PayPal and AI* hackathon. **It only uses t
 - **Backend:** Node.js + Express
 - **Frontend:** HTML, CSS and JavaScript, with [AG Grid](https://www.ag-grid.com/) for the invoices dashboard
 - **Payments:** PayPal Invoicing API v2 (sandbox)
-- **AI:** models via [OpenRouter](https://openrouter.ai/) with tool calling
+- **AI:** `openai/gpt-oss-120b` on [Groq](https://groq.com/) (OpenAI-compatible API) with tool calling; [OpenRouter](https://openrouter.ai/) works as a drop-in alternative
 - **Hosting:** Render
 
 ## How it works
@@ -66,7 +66,7 @@ The dashboard uses [AG Grid Community](https://www.ag-grid.com/) 36.2.0, served 
 
 ## AI usage
 
-- **Model:** `anthropic/claude-haiku-5.5` via OpenRouter (configurable with `OPENROUTER_MODEL`). It's fast and inexpensive (about $0.0003 per request). The public demo caps AI calls at 300 per day by default (`LIMITE_IA_DIARIO`) on top of a per-visitor limit, and the OpenRouter key has its own spending limit.
+- **Model:** `openai/gpt-oss-120b` served by Groq, through its OpenAI-compatible API. The provider is configured with environment variables (`IA_URL`, `IA_API_KEY`, `IA_MODELO`), so any OpenAI-compatible provider works; OpenRouter is supported as a fallback (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`). Groq's free tier limits tokens per minute, so the server retries automatically when Groq asks to wait a few seconds, and caps AI calls at 300 per day (`LIMITE_IA_DIARIO`).
 - **What for:**
   - Turning billing instructions, in English or Spanish, into structured invoice data, writing the item as a professional invoice line and flagging missing or ambiguous data (for example, currencies other than USD).
   - Drafting payment reminders in the tone that fits the delay and in the client's language, using the real invoice data from PayPal.
@@ -80,7 +80,7 @@ Requirements:
 
 - Node.js 22.9 or later
 - A PayPal developer account, with sandbox credentials under *Apps & Credentials*
-- An [OpenRouter](https://openrouter.ai/keys) API key
+- A [Groq](https://console.groq.com/keys) API key (or an [OpenRouter](https://openrouter.ai/keys) key)
 
 ```bash
 cp .env.example .env   # then fill in the keys
@@ -95,7 +95,7 @@ To test a payment, open the invoice link **in a regular browser (Chrome, Firefox
 The repo includes a Render [Blueprint](render.yaml): a Node web service on the free plan, with `npm ci` to build, `npm start` to run and `/api/salud` as the health check.
 
 1. On [dashboard.render.com](https://dashboard.render.com): **New > Blueprint** and pick this repository.
-2. Render asks for the variables marked as secret: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `OPENROUTER_API_KEY` and `FREELANCER_NOMBRE` (optional, used to sign reminders). They are never stored in the repo.
+2. Render asks for the variables marked as secret: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `IA_API_KEY` (Groq), `FREELANCER_NOMBRE` (optional, used to sign reminders) and `FACTURAS_OCULTAS` (optional). They are never stored in the repo.
 3. Every push to `main` redeploys the app.
 
 Safeguards for the public demo:

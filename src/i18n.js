@@ -26,7 +26,7 @@ const MENSAJES = {
     'consulta.larga': 'The question is too long (300 characters max).',
     'consulta.fuera_de_tema': 'I can only answer questions about your invoices: who owes you, what came in, what’s overdue or how much you billed.',
 
-    'ia.config': 'OPENROUTER_API_KEY or OPENROUTER_MODEL is missing from the environment.',
+    'ia.config': 'The AI isn’t configured on the server (missing API key or model).',
     'ia.no_disponible': 'The AI isn’t available right now.',
     'ia.ilegible': 'The AI returned something unreadable. Try rephrasing.',
     'ia.cuota': 'The demo has reached its AI usage limit for now. Please try again later.',
@@ -69,7 +69,7 @@ const MENSAJES = {
     'consulta.larga': 'La pregunta es demasiado larga (máximo 300 caracteres).',
     'consulta.fuera_de_tema': 'Solo puedo responder preguntas sobre tus cobros: quién te debe, qué entró, qué está vencido o cuánto facturaste.',
 
-    'ia.config': 'Faltan OPENROUTER_API_KEY u OPENROUTER_MODEL en el entorno.',
+    'ia.config': 'La IA no está configurada en el servidor (falta la clave o el modelo).',
     'ia.no_disponible': 'La IA no está disponible en este momento.',
     'ia.ilegible': 'La IA devolvió algo ilegible. Prueba a reformularlo.',
     'ia.cuota': 'La demo alcanzó por ahora su límite de uso de IA. Inténtalo más tarde.',

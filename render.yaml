@@ -19,6 +19,13 @@ services:
         sync: false
       - key: PAYPAL_CLIENT_SECRET
         sync: false
+      # IA: Groq (API compatible con OpenAI). Si se quitan IA_*, se usa OpenRouter.
+      - key: IA_URL
+        value: https://api.groq.com/openai/v1/chat/completions
+      - key: IA_MODELO
+        value: openai/gpt-oss-120b
+      - key: IA_API_KEY
+        sync: false
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL

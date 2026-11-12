@@ -1,5 +1,5 @@
 import express from 'express';
-import { IAError } from './src/ai.js';
+import { configuracionIA, IAError } from './src/ai.js';
 import { idiomaDe, m } from './src/i18n.js';
 import { claveDeError, PayPalError } from './src/paypal.js';
 import cobros from './src/routes/cobros.js';
@@ -25,10 +25,11 @@ app.get('/api/salud', (req, res) => {
   res.json({
     ok: true,
     paypal: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
-    ia: Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_MODEL),
+    ia: Boolean(configuracionIA().clave && configuracionIA().modelo),
     entorno: 'sandbox',
     // El nombre del modelo no es un secreto: sirve para comprobar qué usa el despliegue.
-    modelo: process.env.OPENROUTER_MODEL || null,
+    modelo: configuracionIA().modelo || null,
+    proveedor: new URL(configuracionIA().url).hostname,
   });
 });
 

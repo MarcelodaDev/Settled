@@ -17,3 +17,6 @@ data/*.json
 Thumbs.db
 .vscode/
 *.log
+
+# Notas de entrega (guion, textos de Devpost): no van al repo
+entrega/
