@@ -596,6 +596,11 @@ body {
 .tabla .ag-header-cell-sorted-asc .ag-header-cell-text,
 .tabla .ag-header-cell-sorted-desc .ag-header-cell-text { color: var(--tinta); }
 
+/* Con altura automática, AG Grid reserva ~150 px para el mensaje de "sin
+   resultados": con una sola fila filtrada quedaba un hueco antes de los totales.
+   Una fila de alto basta para el mensaje. */
+.tabla .ag-grid-scrolling-rows.ag-layout-auto-height { min-height: 60px !important; }
+
 .tabla .ag-cell { display: flex; align-items: center; }
 .tabla .ag-cell-wrapper { width: 100%; }
 

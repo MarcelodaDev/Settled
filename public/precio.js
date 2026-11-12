@@ -148,12 +148,18 @@ export function iniciarPrecio({ datos, usar }) {
     if (!cuerpo.hidden && !estimacion) estimar();
   });
   $('#precio-rehacer').addEventListener('click', estimar);
+  // Al usar un monto, el enlace deja de decir "aún no hay monto".
+  const usarMonto = (monto) => {
+    alUsar(monto);
+    $('#precio').dataset.sinMonto = '';
+    pintarBotonAbrir(false);
+  };
   $('#precio-usar').addEventListener('click', () => {
     const { monto } = total();
-    if (monto > 0) alUsar(monto);
+    if (monto > 0) usarMonto(monto);
   });
   $('#precio-usar-historial').addEventListener('click', () => {
-    if (estimacion?.historial) alUsar(estimacion.historial.promedio);
+    if (estimacion?.historial) usarMonto(estimacion.historial.promedio);
   });
 
   alCambiarIdioma(() => {
