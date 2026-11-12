@@ -4,15 +4,13 @@
 
 import { nombreIdioma } from './i18n.js';
 
-// El proveedor se elige por variables de entorno, sin tocar código. IA_* tiene
-// prioridad; OPENROUTER_* se mantiene como alternativa.
+// El proveedor se elige por variables de entorno, sin tocar código. Con IA_URL
+// se usan solo las variables IA_*; sin ella, OpenRouter con OPENROUTER_*.
+// Nunca se mezclan: una clave de un proveedor no sirve en la URL de otro.
 export function configuracionIA() {
   const e = process.env;
-  return {
-    url: e.IA_URL || 'https://openrouter.ai/api/v1/chat/completions',
-    clave: e.IA_API_KEY || e.OPENROUTER_API_KEY,
-    modelo: e.IA_MODELO || e.OPENROUTER_MODEL,
-  };
+  if (e.IA_URL) return { url: e.IA_URL, clave: e.IA_API_KEY, modelo: e.IA_MODELO };
+  return { url: 'https://openrouter.ai/api/v1/chat/completions', clave: e.OPENROUTER_API_KEY, modelo: e.OPENROUTER_MODEL };
 }
 
 // `clave` es un mensaje de src/i18n.js: el manejador de errores lo traduce al
