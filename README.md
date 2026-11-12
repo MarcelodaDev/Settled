@@ -12,6 +12,8 @@ Write what you want to bill the way you'd tell an assistant, for example *"Bill 
 
 It works in **English and Spanish**: the interface switches with one click, and the AI understands instructions and questions in either language. A freelancer in Latin America can bill a local client in Spanish and an overseas client in English from the same place.
 
+**Demo video (2:14):** [youtu.be/XcuhJDIn1L8](https://youtu.be/XcuhJDIn1L8)
+
 **Live demo:** [settled-sise.onrender.com](https://settled-sise.onrender.com) (free Render plan: the first visit after a while can take about a minute while the server wakes up).
 
 Built for the *Build What's Next with PayPal and AI* hackathon. **It only uses the PayPal sandbox: no real money moves.**
