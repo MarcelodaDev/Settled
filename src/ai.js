@@ -17,7 +17,10 @@ export class IAError extends Error {
   }
 }
 
-async function llamarHerramienta({ sistema, usuario, herramienta }) {
+// Sin max_tokens, OpenRouter reserva el máximo del modelo (65.536 tokens) y
+// rechaza con 402 si la cuenta no podría pagar ese peor caso, aunque la
+// respuesta real use unos cientos. Cada función declara un tope realista.
+async function llamarHerramienta({ sistema, usuario, herramienta, maxTokens = 1000 }) {
   const { OPENROUTER_API_KEY: clave, OPENROUTER_MODEL: modelo } = process.env;
   if (!clave || !modelo) throw new IAError('ia.config');
 
@@ -33,6 +36,7 @@ async function llamarHerramienta({ sistema, usuario, herramienta }) {
     body: JSON.stringify({
       model: modelo,
       temperature: 0,
+      max_tokens: maxTokens,
       messages: [
         { role: 'system', content: sistema },
         { role: 'user', content: usuario },
@@ -147,7 +151,7 @@ export async function redactarRecordatorio(datos, tono, descripcionTono, idioma 
     numero_factura: datos.numero,
   });
 
-  return llamarHerramienta({ sistema, usuario, herramienta: HERRAMIENTA_RECORDATORIO });
+  return llamarHerramienta({ sistema, usuario, herramienta: HERRAMIENTA_RECORDATORIO, maxTokens: 900 });
 }
 
 const HERRAMIENTA_CONSULTA = {
@@ -193,7 +197,7 @@ export async function interpretarConsulta(pregunta, hoy) {
     'Ejemplos: "¿quién me debe?" / "who owes me?" → pendiente, todas. "¿cuánto entró esta semana?" / "how much came in this week?" → cobrado, esta_semana. "¿qué facturas están atrasadas?" / "which invoices are overdue?" → pendiente, vencidas. "how much did Juan pay me this month?" → cobrado, cliente Juan, este_mes. Si no hay superlativo, enfoque es total.',
     'Con superlativos, primero elige la métrica por el verbo y luego el enfoque: "¿qué cliente me debe más?" → pendiente, cliente_principal. "who paid me the most this month?" → cobrado, este_mes, cliente_principal. "¿cuál es mi factura más grande?" → facturado, factura_principal. "which overdue invoice is the biggest?" → pendiente, vencidas, factura_principal.',
   ].join('\n');
-  return llamarHerramienta({ sistema, usuario: pregunta, herramienta: HERRAMIENTA_CONSULTA });
+  return llamarHerramienta({ sistema, usuario: pregunta, herramienta: HERRAMIENTA_CONSULTA, maxTokens: 400 });
 }
 
 const HERRAMIENTA_ESTIMACION = {
@@ -244,7 +248,7 @@ export async function estimarTrabajo(descripcion, idioma = 'en', anteriores = []
     '- En similares, marca solo facturas anteriores del mismo tipo de trabajo (un logo no se parece a un sitio web). Ante la duda, no la marques.',
   ].join('\n');
   const usuario = JSON.stringify({ trabajo_nuevo: descripcion, facturas_anteriores: anteriores });
-  return llamarHerramienta({ sistema, usuario, herramienta: HERRAMIENTA_ESTIMACION });
+  return llamarHerramienta({ sistema, usuario, herramienta: HERRAMIENTA_ESTIMACION, maxTokens: 1200 });
 }
 
 export async function interpretarCobro(instruccion, hoy, idioma = 'en') {
@@ -264,5 +268,5 @@ export async function interpretarCobro(instruccion, hoy, idioma = 'en') {
     '- Si el texto no es una instrucción de cobro, deja todo en null y explícalo en advertencias.',
   ].join('\n');
 
-  return llamarHerramienta({ sistema, usuario: instruccion, herramienta: HERRAMIENTA_COBRO });
+  return llamarHerramienta({ sistema, usuario: instruccion, herramienta: HERRAMIENTA_COBRO, maxTokens: 900 });
 }
